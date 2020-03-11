@@ -3,18 +3,18 @@
 ## Current
 
 Auth
-```
-$ POCKET_CONSUMER_KEY={CONSUMER_KEY} cargo run -- auth login
-```
-
-Get
-```
-$ POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- get
+```bash
+POCKET_CONSUMER_KEY={CONSUMER_KEY} cargo run -- auth login
 ```
 
 Get
+```bash
+POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- get
 ```
-$ POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- add {URL}
+
+Get
+```bash
+POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- add {URL}
 ```
 
 ## Future
