@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 pocket = { git = "https://github.com/ozbe/rust-pocket.git", branch = "serde" }
+structopt = "0.3"
