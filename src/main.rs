@@ -93,9 +93,9 @@ impl PocketGet for Pocket {
 
 #[cfg(test)]
 mod tests {
-    use super::{Commands, PocketGet, get};
-    use pocket::{PocketItem, PocketResult, PocketGetRequest};
-    use crate::Opts;
+    use super::{Commands, PocketGet, get, Opts};
+    use pocket::{PocketItem, PocketResult, PocketGetRequest, PocketError};
+    use std::io;
 
     struct PocketGetMock<'a, F, G>
         where
@@ -108,8 +108,8 @@ mod tests {
 
     impl<'a, F, G> PocketGet for PocketGetMock<'a, F, G>
         where
-        F: Fn() -> PocketGetRequest<'a>,
-        G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
+            F: Fn() -> PocketGetRequest<'a>,
+            G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
     {
         fn filter(&self) -> PocketGetRequest {
             (self.filter_mock)()
@@ -120,8 +120,31 @@ mod tests {
         }
     }
 
+    struct WriteMock<W, F>
+        where
+            W: Fn(&[u8]) -> io::Result<usize>,
+            F: Fn() -> io::Result<()>,
+    {
+        write_mock: W,
+        flush_mock: F,
+    }
+
+    impl<W, F> io::Write for WriteMock<W, F>
+        where
+            W: Fn(&[u8]) -> io::Result<usize>,
+            F: Fn() -> io::Result<()>,
+    {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            (self.write_mock)(buf)
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            (self.flush_mock)()
+        }
+    }
+
     #[test]
-    fn get_success() {
+    fn get_writes_items() {
         let items: Vec<PocketItem> = vec![];
         let pocket = PocketGetMock {
             filter_mock: || PocketGetRequest::new(),
@@ -137,5 +160,42 @@ mod tests {
         get(&pocket, &opts, &mut result);
 
         assert_eq!(format!("items: {:?}\n", &items).into_bytes(), result);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_panics_when_pocket_error() {
+        let pocket = PocketGetMock {
+            filter_mock: || PocketGetRequest::new(),
+            get_mock: |_| Err(PocketError::Proto(1, "".to_string())),
+        };
+        let opts = Opts {
+            consumer_key: "".to_string(),
+            access_token: None,
+            command: Commands::Get
+        };
+        let mut writer = Vec::new();
+
+        get(&pocket, &opts, &mut writer);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_panics_when_write_error() {
+        let pocket = PocketGetMock {
+            filter_mock: || PocketGetRequest::new(),
+            get_mock: |_| Ok(vec![]),
+        };
+        let opts = Opts {
+            consumer_key: "".to_string(),
+            access_token: None,
+            command: Commands::Get
+        };
+        let mut writer = WriteMock {
+            flush_mock: || Ok(()),
+            write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
+        };
+
+        get(&pocket, &opts, &mut writer);
     }
 }
