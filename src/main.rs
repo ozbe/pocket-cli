@@ -1,10 +1,12 @@
 extern crate pocket;
 extern crate structopt;
 
-use pocket::{Pocket, PocketGetRequest, PocketResult, PocketItem, PocketAddedItem};
+use pocket::{Pocket, PocketGetRequest, PocketResult, PocketItem, PocketAddedItem, PocketGetTag, PocketGetState, PocketGetType, PocketGetDetail, PocketGetSort};
 use std::io;
 use structopt::StructOpt;
 use hyper::client::IntoUrl;
+use chrono::{DateTime, Utc};
+use std::io::ErrorKind;
 
 #[derive(Debug, StructOpt)]
 struct Opts {
@@ -17,10 +19,78 @@ struct Opts {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
 enum Commands {
     Auth(Auth),
     Add { url: String },
-    Get,
+    Get {
+        #[structopt(flatten)]
+        opts: GetOpts
+    },
+}
+
+#[derive(Debug, StructOpt)]
+struct GetOpts {
+    #[structopt(long)]
+    search: Option<String>,
+    #[structopt(long)]
+    domain: Option<String>,
+    #[structopt(long)]
+    tag: Option<String>,
+    #[structopt(long)]
+    untagged: bool,
+    #[structopt(long, parse(try_from_str = parse_get_state))]
+    state: Option<PocketGetState>,
+    #[structopt(long, parse(try_from_str = parse_get_content_type))]
+    content_type: Option<PocketGetType>,
+    #[structopt(long, parse(try_from_str = parse_get_detail_type))]
+    detail_type: Option<PocketGetDetail>,
+    #[structopt(long)]
+    favorite: Option<bool>,
+    #[structopt(long)]
+    since: Option<DateTime<Utc>>,
+    #[structopt(long, parse(try_from_str = parse_get_sort))]
+    sort: Option<PocketGetSort>,
+    #[structopt(long)]
+    count: Option<usize>,
+    #[structopt(long)]
+    offset: Option<usize>,
+}
+
+fn parse_get_state(s: &str) -> Result<PocketGetState, io::Error> {
+    match s {
+        "unread" => Ok(PocketGetState::Unread),
+        "archive" => Ok(PocketGetState::Archive),
+        "all" => Ok(PocketGetState::All),
+        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid state: {}", s))),
+    }
+}
+
+fn parse_get_content_type(s: &str) -> Result<PocketGetType, io::Error> {
+    match s {
+        "article" => Ok(PocketGetType::Article),
+        "video" => Ok(PocketGetType::Video),
+        "image" => Ok(PocketGetType::Image),
+        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid content type: {}", s))),
+    }
+}
+
+fn parse_get_detail_type(s: &str) -> Result<PocketGetDetail, io::Error> {
+    match s {
+        "simple" => Ok(PocketGetDetail::Simple),
+        "complete" => Ok(PocketGetDetail::Complete),
+        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid detail type: {}", s))),
+    }
+}
+
+fn parse_get_sort(s: &str) -> Result<PocketGetSort, io::Error> {
+    match s {
+        "newest" => Ok(PocketGetSort::Newest),
+        "oldest" => Ok(PocketGetSort::Oldest),
+        "title" => Ok(PocketGetSort::Title),
+        "site" => Ok(PocketGetSort::Site),
+        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid sort: {}", s))),
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -49,9 +119,62 @@ fn add<T: IntoUrl>(pocket: &impl PocketAdd, url: T, _opts: &Opts, mut writer: im
     writeln!(writer, "item: {:?}", item).unwrap();
 }
 
-fn get(pocket: &impl PocketGet, _opts: &Opts, mut writer: impl std::io::Write) {
+fn get(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io::Write) {
     let items = {
-        let f = pocket.filter();
+        let mut f = pocket.filter();
+
+        if let Some(search) = &opts.search {
+            f.search(search);
+        }
+
+        // domain
+        if let Some(domain) = &opts.domain {
+            f.domain(domain);
+        }
+
+        // tag match
+        match (&opts.tag, opts.untagged) {
+            (Some(_), true) => panic!("Cannot set tag and untagged"),
+            (Some(tag), false) => { f.tag(PocketGetTag::Tagged(tag)); },
+            (None, true) => { f.tag(PocketGetTag::Untagged); },
+            (None, false) => {},
+        }
+
+        // state
+        if let Some(state) = opts.state {
+            f.state(state);
+        }
+
+        // content_type
+        if let Some(content_type) = opts.content_type {
+            f.content_type(content_type);
+        }
+
+        // detail_type
+        if let Some(detail_type) = opts.detail_type {
+            f.detail_type(detail_type);
+        }
+
+        // favorite
+        if let Some(favorite) = opts.favorite {
+            f.favorite(favorite);
+        }
+
+        // sort
+        if let Some(sort) = opts.sort {
+            f.sort(sort);
+        }
+
+        // offset
+        if let Some(offset) = opts.offset {
+            f.offset(offset);
+        }
+
+        // count
+        if let Some(count) = opts.count {
+            f.count(count);
+        }
+
         pocket.get(&f)
     }.unwrap();
     writeln!(writer, "items: {:?}", items).unwrap();
@@ -69,12 +192,12 @@ fn main() {
             );
             add(&pocket, url, &opts, &mut std::io::stdout())
         },
-        Commands::Get => {
+        Commands::Get { opts: ref get_opts } => {
             let pocket = Pocket::new(
                 &opts.consumer_key,
                 opts.access_token.as_deref().unwrap(),
             );
-            get(&pocket, &opts, &mut std::io::stdout())
+            get(&pocket, get_opts, &mut std::io::stdout())
         }
     }
 }
@@ -169,10 +292,19 @@ mod tests {
             filter_mock: || PocketGetRequest::new(),
             get_mock: |_| Ok(vec![]),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Get
+        let opts = GetOpts {
+            search: None,
+            domain: None,
+            tag: None,
+            untagged: false,
+            state: None,
+            content_type: None,
+            detail_type: None,
+            favorite: None,
+            since: None,
+            sort: None,
+            count: None,
+            offset: None
         };
         let mut result = Vec::new();
 
@@ -188,10 +320,19 @@ mod tests {
             filter_mock: || PocketGetRequest::new(),
             get_mock: |_| Err(PocketError::Proto(1, "".to_string())),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Get
+        let opts = GetOpts {
+            search: None,
+            domain: None,
+            tag: None,
+            untagged: false,
+            state: None,
+            content_type: None,
+            detail_type: None,
+            favorite: None,
+            since: None,
+            sort: None,
+            count: None,
+            offset: None
         };
         let mut writer = Vec::new();
 
@@ -205,10 +346,19 @@ mod tests {
             filter_mock: || PocketGetRequest::new(),
             get_mock: |_| Ok(vec![]),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Get
+        let opts = GetOpts {
+            search: None,
+            domain: None,
+            tag: None,
+            untagged: false,
+            state: None,
+            content_type: None,
+            detail_type: None,
+            favorite: None,
+            since: None,
+            sort: None,
+            count: None,
+            offset: None
         };
         let mut writer = WriteMock {
             flush_mock: || Ok(()),
@@ -283,7 +433,7 @@ mod tests {
         let opts = Opts {
             consumer_key: "".to_string(),
             access_token: None,
-            command: Commands::Get
+            command: Commands::Add { url: raw_url.to_string() }
         };
         let mut result = Vec::new();
         let url = "https://example.com".into_url().unwrap();
@@ -305,7 +455,7 @@ mod tests {
         let opts = Opts {
             consumer_key: "".to_string(),
             access_token: None,
-            command: Commands::Get
+            command: Commands::Add { url: raw_url.to_string() }
         };
         let mut writer = Vec::new();
         let url = "https://example.com".into_url().unwrap();
@@ -324,7 +474,7 @@ mod tests {
         let opts = Opts {
             consumer_key: "".to_string(),
             access_token: None,
-            command: Commands::Get
+            command: Commands::Add { url: raw_url.to_string() }
         };
         let mut writer = WriteMock {
             flush_mock: || Ok(()),
