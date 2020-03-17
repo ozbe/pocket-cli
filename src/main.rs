@@ -1,12 +1,13 @@
 extern crate pocket;
 extern crate structopt;
 
-use pocket::{Pocket, PocketGetRequest, PocketResult, PocketItem, PocketAddedItem, PocketGetTag, PocketGetState, PocketGetType, PocketGetDetail, PocketGetSort};
+use pocket::*;
 use std::io;
 use structopt::StructOpt;
 use hyper::client::IntoUrl;
 use chrono::{DateTime, Utc};
 use std::io::ErrorKind;
+use hyper::Url;
 
 #[derive(Debug, StructOpt)]
 struct Opts {
@@ -22,11 +23,25 @@ struct Opts {
 #[structopt(rename_all = "kebab-case")]
 enum Commands {
     Auth(Auth),
-    Add { url: String },
+    Add {
+        #[structopt(flatten)]
+        opts: AddOpts
+    },
     Get {
         #[structopt(flatten)]
         opts: GetOpts
     },
+}
+
+#[derive(Debug, StructOpt)]
+struct AddOpts {
+    url: Url,
+    #[structopt(long)]
+    title: Option<String>,
+    #[structopt(long = "tag")]
+    tags: Option<Vec<String>>,
+    #[structopt(long)]
+    tweet_id: Option<String>
 }
 
 #[derive(Debug, StructOpt)]
@@ -114,8 +129,16 @@ fn login(opts: &Opts) {
     println!("access token: {:?}", user.access_token);
 }
 
-fn add<T: IntoUrl>(pocket: &impl PocketAdd, url: T, _opts: &Opts, mut writer: impl std::io::Write) {
-    let item = pocket.push(url).unwrap();
+fn add(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io::Write) {
+    let tags = opts.tags.as_ref()
+        .map(|v| v.iter().map(|s| s.as_ref()).collect::<Vec<&str>>());
+
+    let item = pocket.add(&PocketAddRequest {
+        url: &opts.url,
+        title: opts.title.as_deref(),
+        tags: tags.as_ref().map(|v| v.as_slice()),
+        tweet_id: opts.tweet_id.as_deref(),
+    }).unwrap();
     writeln!(writer, "item: {:?}", item).unwrap();
 }
 
@@ -182,22 +205,21 @@ fn get(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io::Write)
 
 fn main() {
     let opts = Opts::from_args();
+    let pocket = || {
+        Pocket::new(
+            &opts.consumer_key,
+            &opts.access_token.as_deref().unwrap(),
+        )
+    };
+    let mut writer = std::io::stdout();
 
     match opts.command {
         Commands::Auth(ref sc) => auth(sc, &opts),
-        Commands::Add { ref url } => {
-            let pocket = Pocket::new(
-                &opts.consumer_key,
-                opts.access_token.as_deref().unwrap(),
-            );
-            add(&pocket, url, &opts, &mut std::io::stdout())
+        Commands::Add { opts: ref add_opts } => {
+            add(&pocket(), add_opts, &mut writer)
         },
         Commands::Get { opts: ref get_opts } => {
-            let pocket = Pocket::new(
-                &opts.consumer_key,
-                opts.access_token.as_deref().unwrap(),
-            );
-            get(&pocket, get_opts, &mut std::io::stdout())
+            get(&pocket(), get_opts, &mut writer)
         }
     }
 }
@@ -218,13 +240,13 @@ impl PocketGet for Pocket {
 }
 
 trait PocketAdd {
-    fn add<T: IntoUrl>(&self, url: T, title: Option<&str>, tags: Option<&str>, tweet_id: Option<&str>) -> PocketResult<PocketAddedItem>;
+    fn add(&self, request: &PocketAddRequest) -> PocketResult<PocketAddedItem>;
     fn push<T: IntoUrl>(&self, url: T) -> PocketResult<PocketAddedItem>;
 }
 
 impl PocketAdd for Pocket {
-    fn add<T: IntoUrl>(&self, url: T, title: Option<&str>, tags: Option<&str>, tweet_id: Option<&str>) -> PocketResult<PocketAddedItem> {
-        self.add(url, title, tags, tweet_id)
+    fn add(&self, request: &PocketAddRequest) -> PocketResult<PocketAddedItem> {
+        self.add(request)
     }
 
     fn push<T: IntoUrl>(&self, url: T) -> PocketResult<PocketAddedItem> {
@@ -370,7 +392,7 @@ mod tests {
 
     struct PocketAddMock<A, P>
         where
-            A: Fn(Url, Option<&str>, Option<&str>, Option<&str>) -> PocketResult<PocketAddedItem>,
+            A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
             P: Fn(Url) -> PocketResult<PocketAddedItem>,
     {
         add_mock: A,
@@ -379,11 +401,11 @@ mod tests {
 
     impl<A, P> PocketAdd for PocketAddMock<A, P>
         where
-            A: Fn(Url, Option<&str>, Option<&str>, Option<&str>) -> PocketResult<PocketAddedItem>,
+            A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
             P: Fn(Url) -> PocketResult<PocketAddedItem>,
     {
-        fn add<T: IntoUrl>(&self, url: T, title: Option<&str>, tags: Option<&str>, tweet_id: Option<&str>) -> PocketResult<PocketAddedItem> {
-            (self.add_mock)(url.into_url().unwrap(), title, tags, tweet_id)
+        fn add(&self, request: &PocketAddRequest) -> PocketResult<PocketAddedItem> {
+            (self.add_mock)(request)
         }
 
         fn push<T: IntoUrl>(&self, url: T) -> PocketResult<PocketAddedItem> {
@@ -427,19 +449,20 @@ mod tests {
     fn add_writes_item() {
         let raw_url = "https://example.com";
         let pocket = PocketAddMock {
-            add_mock: |_, _, _, _| Err(PocketError::Proto(0, "".to_string())),
-            push_mock: |_| Ok(added_item(&raw_url.into_url().unwrap())),
+            add_mock: |r|  Ok(added_item(r.url)),
+            push_mock: |_| Err(PocketError::Proto(0, "".to_string())),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Add { url: raw_url.to_string() }
+        let opts = AddOpts {
+            url: raw_url.into_url().unwrap(),
+            title: None,
+            tags: None,
+            tweet_id: None
         };
         let mut result = Vec::new();
         let url = "https://example.com".into_url().unwrap();
         let expected_item = added_item(&url);
 
-        add(&pocket, url,  &opts, &mut result);
+        add(&pocket, &opts, &mut result);
 
         assert_eq!(format!("item: {:?}\n", expected_item).into_bytes(), result);
     }
@@ -449,18 +472,18 @@ mod tests {
     fn add_panics_when_pocket_error() {
         let raw_url = "https://example.com";
         let pocket = PocketAddMock {
-            add_mock: |_, _, _, _| Ok(added_item(&raw_url.into_url().unwrap())),
-            push_mock: |_| Err(PocketError::Proto(0, "".to_string())),
+            add_mock: |_| Err(PocketError::Proto(0, "".to_string())),
+            push_mock: |_| Ok(added_item(&raw_url.into_url().unwrap())),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Add { url: raw_url.to_string() }
+        let opts = AddOpts {
+            url: raw_url.into_url().unwrap(),
+            title: None,
+            tags: None,
+            tweet_id: None
         };
         let mut writer = Vec::new();
-        let url = "https://example.com".into_url().unwrap();
 
-        add(&pocket, url,  &opts, &mut writer);
+        add(&pocket, &opts, &mut writer);
     }
 
     #[test]
@@ -468,20 +491,20 @@ mod tests {
     fn add_panics_when_write_error() {
         let raw_url = "https://example.com";
         let pocket = PocketAddMock {
-            add_mock: |_, _, _, _| Ok(added_item(&raw_url.into_url().unwrap())),
+            add_mock: |r| Ok(added_item(r.url)),
             push_mock: |_| Ok(added_item(&raw_url.into_url().unwrap())),
         };
-        let opts = Opts {
-            consumer_key: "".to_string(),
-            access_token: None,
-            command: Commands::Add { url: raw_url.to_string() }
+        let opts = AddOpts {
+            url: raw_url.into_url().unwrap(),
+            title: None,
+            tags: None,
+            tweet_id: None
         };
         let mut writer = WriteMock {
             flush_mock: || Ok(()),
             write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
         };
-        let url = "https://example.com".into_url().unwrap();
 
-        add(&pocket, url,  &opts, &mut writer);
+        add(&pocket, &opts, &mut writer);
     }
 }
