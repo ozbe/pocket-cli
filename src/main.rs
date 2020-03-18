@@ -2,14 +2,7 @@ extern crate pocket;
 extern crate structopt;
 
 use pocket::*;
-use std::{io, fs};
-use std::io::prelude::*;
 use structopt::StructOpt;
-use hyper::client::IntoUrl;
-use chrono::{DateTime, Utc};
-use std::io::ErrorKind;
-use hyper::Url;
-use std::net::{TcpListener, TcpStream};
 
 mod get;
 mod add;
