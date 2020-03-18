@@ -2,12 +2,14 @@ extern crate pocket;
 extern crate structopt;
 
 use pocket::*;
-use std::io;
+use std::{io, fs};
+use std::io::prelude::*;
 use structopt::StructOpt;
 use hyper::client::IntoUrl;
 use chrono::{DateTime, Utc};
 use std::io::ErrorKind;
 use hyper::Url;
+use std::net::{TcpListener, TcpStream};
 
 #[derive(Debug, StructOpt)]
 struct Opts {
@@ -113,20 +115,57 @@ enum Auth {
     Login,
 }
 
-fn auth(cmd: &Auth, opts: &Opts) {
+fn auth(cmd: &Auth, opts: &Opts, reader: impl std::io::BufRead, writer: impl std::io::Write) {
     match cmd {
-        Auth::Login => login(opts),
+        Auth::Login => login(opts, reader, writer),
     }
 }
 
-fn login(opts: &Opts) {
-    let pocket = Pocket::auth(&opts.consumer_key);
-    let pocket = pocket.request("rustapi:finishauth").unwrap();
-    println!("Follow auth URL to provide access: {}", pocket.url());
-    let _ = io::stdin().read_line(&mut String::new());
-    let user = pocket.authorize().unwrap();
-    println!("username: {}", user.username);
-    println!("access token: {:?}", user.access_token);
+fn auth_server() {
+    // TODO - rand port and duplicate address
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+
+    for stream in listener.incoming().take(1) {
+        let stream = stream.unwrap();
+        handle_connection(stream)
+    }
+}
+
+const AUTH_SUCCESS_RESPONSE_BODY: &'static str = r#"
+    <!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <title>Pocket CLI</title>
+        </head>
+        <body>
+            <h1>Success!</h1>
+            <p>You have successfully authorized Pocket CLI.</p>
+            <p>Please return to Pocket CLI in your terminal.</p>
+        </body>
+    </html>
+"#;
+
+fn handle_connection(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+    stream.read(&mut buffer).unwrap();
+
+    let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", AUTH_SUCCESS_RESPONSE_BODY);
+
+    stream.write(response.as_bytes()).unwrap();
+    stream.flush().unwrap();
+}
+
+fn login(opts: &Opts, mut reader: impl std::io::BufRead, mut writer: impl std::io::Write) {
+    let auth = PocketAuthentication::new(&opts.consumer_key, "http://127.0.0.1:7878");
+    let code = auth.request(None).unwrap();
+    writeln!(writer, "Follow auth URL to provide access: {}", auth.authorize_url(&code)).unwrap();
+
+    auth_server();
+
+    let user = auth.authorize(&code, None).unwrap();
+    writeln!(writer, "username: {}", user.username).unwrap();
+    writeln!(writer, "access token: {:?}", user.access_token).unwrap();
 }
 
 fn add(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io::Write) {
@@ -211,10 +250,12 @@ fn main() {
             &opts.access_token.as_deref().unwrap(),
         )
     };
+    let stdin = io::stdin();
+    let mut reader = stdin.lock();
     let mut writer = std::io::stdout();
 
     match opts.command {
-        Commands::Auth(ref sc) => auth(sc, &opts),
+        Commands::Auth(ref sc) => auth(sc, &opts, &mut reader, &mut writer),
         Commands::Add { opts: ref add_opts } => {
             add(&pocket(), add_opts, &mut writer)
         },
