@@ -3,10 +3,12 @@ extern crate structopt;
 
 use pocket::*;
 use structopt::StructOpt;
+use crate::output::{OutputFormat, JsonOutput};
 
 mod get;
 mod add;
 mod auth;
+mod output;
 
 #[derive(Debug, StructOpt)]
 struct Opts {
@@ -16,6 +18,8 @@ struct Opts {
     access_token: Option<String>,
     #[structopt(subcommand)]
     command: Commands,
+    #[structopt(default_value, long, short)]
+    output: output::OutputFormat,
 }
 
 #[derive(Debug, StructOpt)]
@@ -48,7 +52,10 @@ fn main() {
             add::handle(&pocket(), add_opts, &mut writer)
         },
         Commands::Get { opts: ref get_opts } => {
-            get::handle(&pocket(), get_opts, &mut writer)
+            let mut output = match opts.output {
+                OutputFormat::Json => JsonOutput::new(writer),
+            };
+            get::handle(&pocket(), get_opts, &mut output)
         }
     }
 }

@@ -5,6 +5,7 @@ use std::io;
 use std::io::ErrorKind;
 use serde::Serialize;
 use url::Url;
+use crate::output::Output;
 
 #[derive(Debug, StructOpt)]
 pub struct GetOpts {
@@ -34,7 +35,7 @@ pub struct GetOpts {
     offset: Option<usize>
 }
 
-pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, writer: impl std::io::Write) {
+pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, output: &mut impl Output) {
     let items: Vec<Item> = {
         let mut f = pocket.filter();
 
@@ -95,14 +96,8 @@ pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, writer: impl std::io::Wri
                 .map(|i| i.into()).collect()
             )
     }.unwrap();
-    output(items, writer);
+    output.write(items).unwrap();
 }
-
-fn output(s: impl Serialize, mut writer: impl std::io::Write) {
-    let s = serde_json::to_string(&s).unwrap();
-    writeln!(writer, "{}", s).unwrap();
-}
-
 
 #[derive(Serialize, Debug)]
 pub struct Item {
@@ -346,6 +341,9 @@ impl PocketGet for Pocket {
 mod tests {
     use super::*;
     use std::io;
+    use crate::output::OutputError;
+    use std::io::Write;
+    use std::fmt::Debug;
 
     struct PocketGetMock<'a, F, G>
         where
@@ -393,6 +391,33 @@ mod tests {
         }
     }
 
+    struct WriteLnOutput {
+        output: Vec<u8>,
+    }
+
+    impl Output for WriteLnOutput {
+        fn write(&mut self, value: impl Serialize + Debug) -> Result<(), OutputError> {
+            writeln!(&mut self.output, "{:?}", value)
+                .map_err(|_| OutputError {})
+        }
+    }
+
+    struct OutputMock<W>
+        where
+            W: Fn() -> Result<(), OutputError>,
+    {
+        write_mock: W,
+    }
+
+    impl<W> Output for OutputMock<W>
+        where
+            W: Fn() -> Result<(), OutputError>,
+    {
+        fn write(&mut self, _value: impl Serialize + Debug) -> Result<(), OutputError> {
+            (self.write_mock)()
+        }
+    }
+
     #[test]
     fn get_writes_items() {
         let items: Vec<PocketItem> = vec![];
@@ -414,11 +439,13 @@ mod tests {
             count: None,
             offset: None
         };
-        let mut result = Vec::new();
+        let mut output = WriteLnOutput {
+            output: Vec::new(),
+        };
 
-        handle(&pocket, &opts, &mut result);
+        handle(&pocket, &opts, &mut output);
 
-        assert_eq!(format!("items: {:?}\n", &items).into_bytes(), result);
+        assert_eq!(format!("{:?}\n", &items).into_bytes(), output.output);
     }
 
     #[test]
@@ -442,9 +469,11 @@ mod tests {
             count: None,
             offset: None
         };
-        let mut writer = Vec::new();
+        let mut output = WriteLnOutput {
+            output: Vec::new(),
+        };
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 
     #[test]
@@ -468,12 +497,11 @@ mod tests {
             count: None,
             offset: None
         };
-        let mut writer = WriteMock {
-            flush_mock: || Ok(()),
-            write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
+        let mut output = OutputMock {
+            write_mock: || Err(OutputError {}),
         };
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 }
 
