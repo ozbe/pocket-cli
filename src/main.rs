@@ -9,6 +9,7 @@ mod get;
 mod add;
 mod auth;
 mod output;
+mod models;
 
 #[derive(Debug, StructOpt)]
 struct Opts {
