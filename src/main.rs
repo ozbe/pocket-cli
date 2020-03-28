@@ -3,7 +3,7 @@ extern crate structopt;
 
 use pocket::*;
 use structopt::StructOpt;
-use crate::output::{OutputFormat, JsonOutput};
+use crate::output::Output;
 
 mod get;
 mod add;
@@ -52,9 +52,7 @@ fn main() {
             add::handle(&pocket(), add_opts, &mut writer)
         },
         Commands::Get { opts: ref get_opts } => {
-            let mut output = match opts.output {
-                OutputFormat::Json => JsonOutput::new(writer),
-            };
+            let mut output = Output::new(opts.output, writer);
             get::handle(&pocket(), get_opts, &mut output)
         }
     }
