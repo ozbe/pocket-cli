@@ -50,7 +50,8 @@ fn main() {
     match opts.command {
         Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
         Commands::Add { opts: ref add_opts } => {
-            add::handle(&pocket(), add_opts, &mut writer)
+            let mut output = Output::new(opts.output, writer);
+            add::handle(&pocket(), add_opts, &mut output)
         },
         Commands::Get { opts: ref get_opts } => {
             let mut output = Output::new(opts.output, writer);

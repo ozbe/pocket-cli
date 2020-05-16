@@ -2,6 +2,9 @@ use pocket::*;
 use structopt::StructOpt;
 use url::Url;
 use hyper::client::IntoUrl;
+use crate::output::Output;
+use std::io::Write;
+use crate::models::Item;
 
 #[derive(Debug, StructOpt)]
 pub struct AddOpts {
@@ -14,17 +17,54 @@ pub struct AddOpts {
     tweet_id: Option<String>
 }
 
-pub fn handle(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io::Write) {
+pub fn handle<W: Write>(pocket: &impl PocketAdd, opts: &AddOpts, output: &mut Output<W>) {
     let tags = opts.tags.as_ref()
         .map(|v| v.iter().map(|s| s.as_ref()).collect::<Vec<&str>>());
 
-    let item = pocket.add(&PocketAddRequest {
+    let item: Item = pocket.add(&PocketAddRequest {
         url: &opts.url,
         title: opts.title.as_deref(),
         tags: tags.as_ref().map(|v| v.as_slice()),
         tweet_id: opts.tweet_id.as_deref(),
-    }).unwrap();
-    writeln!(writer, "item: {:?}", item).unwrap();
+    }).unwrap().into();
+    output.write(item).unwrap();
+}
+
+impl From<PocketAddedItem> for Item {
+    fn from(p: PocketAddedItem) -> Self {
+        Item {
+            item_id: p.item_id,
+            given_url: p.given_url,
+            given_title: None,
+            word_count: p.word_count,
+            excerpt: p.excerpt,
+            time_added: None,
+            time_read: None,
+            time_updated: None,
+            time_favorited: None,
+            favorite: None,
+            is_index: p.is_index,
+            is_article: p.is_article,
+            has_image: p.has_image.into(),
+            has_video: p.has_video.into(),
+            resolved_id: p.resolved_id,
+            resolved_title: None,
+            resolved_url: Some(p.resolved_url),
+            sort_id: None,
+            status: None,
+            tags: None,
+            images: Some(p.images.into_iter().map(|i| i.into()).collect()),
+            videos: Some(p.videos.into_iter().map(|v| v.into()).collect()),
+            authors: Some(p.authors.into_iter().map(|a| a.into()).collect()),
+            lang: p.lang,
+            time_to_read: None,
+            domain_metadata: None,
+            listen_duration_estimate: None,
+            image: None,
+            amp_url: None,
+            top_image_url: None
+        }
+    }
 }
 
 pub trait PocketAdd {
@@ -48,6 +88,7 @@ mod tests {
     use super::*;
     use std::io;
     use hyper::Url;
+    use crate::output::OutputFormat;
 
     struct WriteMock<W, F>
         where
@@ -140,13 +181,15 @@ mod tests {
             tags: None,
             tweet_id: None
         };
-        let mut result = Vec::new();
+        let writer = Vec::new();
+        let mut output = Output::new(OutputFormat::Json, writer);
+
         let url = "https://example.com".into_url().unwrap();
-        let expected_item = added_item(&url);
+        let expected_item: Item = added_item(&url).into();
 
-        handle(&pocket, &opts, &mut result);
+        handle(&pocket, &opts, &mut output);
 
-        assert_eq!(format!("item: {:?}\n", expected_item).into_bytes(), result);
+        assert_eq!(serde_json::to_string(&expected_item).unwrap(), String::from_utf8_lossy(&output.into_vec()));
     }
 
     #[test]
@@ -163,9 +206,10 @@ mod tests {
             tags: None,
             tweet_id: None
         };
-        let mut writer = Vec::new();
+        let writer = Vec::new();
+        let mut output = Output::new(OutputFormat::Json, writer);
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 
     #[test]
@@ -182,11 +226,12 @@ mod tests {
             tags: None,
             tweet_id: None
         };
-        let mut writer = WriteMock {
+        let writer = WriteMock {
             flush_mock: || Ok(()),
             write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
         };
+        let mut output = Output::new(OutputFormat::Json, writer);
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 }

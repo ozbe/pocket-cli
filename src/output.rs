@@ -57,7 +57,7 @@ pub struct Output<W>
         W: Write
 {
     pub format: OutputFormat,
-    pub writer: W,
+    writer: W,
 }
 
 impl<W> Output<W>
@@ -95,6 +95,12 @@ impl<W> Output<W>
 
         write!(self.writer, "{}", s)
             .map_err(|_| OutputError {})
+    }
+}
+
+impl Output<Vec<u8>> {
+    pub fn into_vec(self) -> Vec<u8> {
+        self.writer
     }
 }
 

@@ -106,23 +106,23 @@ impl From<PocketItem> for Item {
         Item {
             item_id: p.item_id,
             given_url: p.given_url,
-            given_title: p.given_title,
+            given_title: Some(p.given_title),
             word_count: p.word_count,
             excerpt: p.excerpt,
-            time_added: p.time_added,
+            time_added: Some(p.time_added),
             time_read: p.time_read,
-            time_updated: p.time_updated,
+            time_updated: Some(p.time_updated),
             time_favorited: p.time_favorited,
-            favorite: p.favorite,
+            favorite: Some(p.favorite),
             is_index: p.is_index,
             is_article: p.is_article,
             has_image: p.has_image.into(),
             has_video: p.has_video.into(),
             resolved_id: p.resolved_id,
-            resolved_title: p.resolved_title,
+            resolved_title: Some(p.resolved_title),
             resolved_url: p.resolved_url,
-            sort_id: p.sort_id,
-            status: p.status.into(),
+            sort_id: Some(p.sort_id),
+            status: Some(p.status.into()),
             tags: p.tags.map(|v| v.into_iter().map(|t| t.into()).collect()),
             images: p.images.map(|v| v.into_iter().map(|i| i.into()).collect()),
             videos: p.videos.map(|v| v.into_iter().map(|v| v.into()).collect()),
@@ -245,7 +245,7 @@ mod tests {
 
         handle(&pocket, &opts, &mut output);
 
-        assert_eq!("[]", String::from_utf8_lossy(&output.writer));
+        assert_eq!("[]", String::from_utf8_lossy(&output.into_vec()));
     }
 
     #[test]
