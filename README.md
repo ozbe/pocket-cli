@@ -1,63 +1,58 @@
-# WIP: Pocket CLI
+# Pocket
 
-## Current
+[Pocket API](https://getpocket.com/developer/apps/) command-line client.
 
-Auth
+A utility for interacting with the Pocket API.
+
+## Compile from Source
+
 ```bash
-POCKET_CONSUMER_KEY={CONSUMER_KEY} cargo run -- auth login
+$ git clone git@github.com:ozbe/pocket-cli.git
+$ cd pocket-cli
+$ cargo build --release
 ```
+The build output is `./target/release/pocket-cli`. Copy and execute that as you
+desire.
 
-Get
-```bash
-POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- get
-```
+## Usage
 
-Get
-```bash
-POCKET_CONSUMER_KEY={CONSUMER_KEY} POCKET_ACCESS_TOKEN={ACCESS_TOKEN} cargo run -- add {URL}
-```
+Run pocket with `pocket-cli -h` or `pocket-cli --help` to view the latest available flags, arguments, and
+commands.
 
-## Future
+```text
+pocket-cli 0.1.0
+Interact with the Pocket API
 
-Possible help output with inline notes
-```
-USAGE:  
-    pocket [FLAGS] [OPTIONS] [SUBCOMMAND]
+USAGE:
+    pocket-cli [OPTIONS] --consumer-key <consumer-key> <SUBCOMMAND>
 
 FLAGS:
-    -h, --help       Prints this message
+    -h, --help       Prints help information
     -V, --version    Prints version information
-    -o, --output     Output format
 
 OPTIONS:
-    -c, --config <FILE>    Sets a custom config file
+        --access-token <access-token>    Pocket access token [env: POCKET_ACCESS_TOKEN=]
+        --consumer-key <consumer-key>    Pocket consumer key [env: POCKET_CONSUMER_KEY=]
 
-SUBCOMMANDS:  
-    help            Prints this message  
-    config set      key value - auth/consumer_key, auth/access_token, auth/username, get/count, get/offset
-    config get      key
-    config view
-    auth            describe
-    auth            login
-    get             get - all optional
-    add             send - url, others optional
-    archive         send - item_id
-    readd           send - item_id
-    favorite        send - item_id
-    unfavorite      send - item_id
-    delete          send - item_id
-    tags-add        send - item_id, tags
-    tags-remove     send - item_id, tags
-    tags-replace    send - item_id, tags
-    tags-clear      send - item_id
-    tag rename      send - old_tag new_tag
-    tag delete      send - tag
+SUBCOMMANDS:
+    add     Add
+    auth    Authenticate
+    get     Get
+    help    Prints this message or the help of the given subcommand(s)
 ```
 
-## Possible examples
+## License
 
-###  Add URL
-`$ pocket add https://example.com`
+Licensed under either of
 
-###  Remove tag
-`$ pocket tags remove tag1`
+ * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally
+submitted for inclusion in the work by you, as defined in the Apache-2.0
+license, shall be dual licensed as above, without any additional terms or
+conditions.

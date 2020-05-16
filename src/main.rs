@@ -9,11 +9,15 @@ mod add;
 mod auth;
 
 #[derive(Debug, StructOpt)]
+/// Interact with the Pocket API.
 struct Opts {
+    /// Pocket consumer key
     #[structopt(long, env = "POCKET_CONSUMER_KEY")]
     consumer_key: String,
+    /// Pocket access token
     #[structopt(long, env = "POCKET_ACCESS_TOKEN")]
     access_token: Option<String>,
+    /// Subcommand
     #[structopt(subcommand)]
     command: Commands,
 }
@@ -21,11 +25,14 @@ struct Opts {
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 enum Commands {
+    /// Authenticate
     Auth(auth::Auth),
+    /// Add
     Add {
         #[structopt(flatten)]
         opts: add::AddOpts
     },
+    /// Get
     Get {
         #[structopt(flatten)]
         opts: get::GetOpts
