@@ -9,6 +9,7 @@ mod add;
 mod auth;
 mod archive;
 mod readd;
+mod favorite;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -48,7 +49,12 @@ enum Commands {
     Readd {
         #[structopt(flatten)]
         opts: readd::ReaddOpts
-    }
+    },
+    /// Favorite
+    Favorite {
+        #[structopt(flatten)]
+        opts: favorite::FavoriteOpts
+    },
 }
 
 fn main() {
@@ -67,6 +73,9 @@ fn main() {
         },
         Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
         Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
+        Commands::Favorite { ref opts } => {
+            favorite::handle(&pocket(), opts, &mut writer)
+        },
         Commands::Get { opts: ref get_opts } => {
             get::handle(&pocket(), get_opts, &mut writer)
         },
