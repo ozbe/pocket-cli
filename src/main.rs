@@ -8,6 +8,7 @@ mod get;
 mod add;
 mod auth;
 mod archive;
+mod readd;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -38,9 +39,15 @@ enum Commands {
         #[structopt(flatten)]
         opts: get::GetOpts
     },
+    /// Archive
     Archive {
         #[structopt(flatten)]
         opts: archive::ArchiveOpts
+    },
+    /// Readd
+    Readd {
+        #[structopt(flatten)]
+        opts: readd::ReaddOpts
     }
 }
 
@@ -62,6 +69,9 @@ fn main() {
         Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
         Commands::Get { opts: ref get_opts } => {
             get::handle(&pocket(), get_opts, &mut writer)
-        }
+        },
+        Commands::Readd { opts: ref add_opts } => {
+            readd::handle(&pocket(), add_opts, &mut writer)
+        },
     }
 }
