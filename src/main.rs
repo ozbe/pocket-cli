@@ -7,6 +7,7 @@ use structopt::StructOpt;
 mod get;
 mod add;
 mod auth;
+mod archive;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -37,6 +38,10 @@ enum Commands {
         #[structopt(flatten)]
         opts: get::GetOpts
     },
+    Archive {
+        #[structopt(flatten)]
+        opts: archive::ArchiveOpts
+    }
 }
 
 fn main() {
@@ -50,10 +55,11 @@ fn main() {
     let mut writer = std::io::stdout();
 
     match opts.command {
-        Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
         Commands::Add { opts: ref add_opts } => {
             add::handle(&pocket(), add_opts, &mut writer)
         },
+        Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
+        Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
         Commands::Get { opts: ref get_opts } => {
             get::handle(&pocket(), get_opts, &mut writer)
         }
