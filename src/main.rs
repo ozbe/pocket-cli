@@ -65,13 +65,13 @@ fn main() {
         Commands::Add { opts: ref add_opts } => {
             add::handle(&pocket(), add_opts, &mut writer)
         },
-        Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
         Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
+        Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
         Commands::Get { opts: ref get_opts } => {
             get::handle(&pocket(), get_opts, &mut writer)
         },
-        Commands::Readd { opts: ref add_opts } => {
-            readd::handle(&pocket(), add_opts, &mut writer)
+        Commands::Readd { ref opts } => {
+            readd::handle(&pocket(), opts, &mut writer)
         },
     }
 }
