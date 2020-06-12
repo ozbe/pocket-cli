@@ -63,6 +63,11 @@ enum Commands {
         #[structopt(flatten)]
         opts: send::SendItemOpts
     },
+    /// Clear tags
+    TagsClear {
+        #[structopt(flatten)]
+        opts: send::SendItemOpts
+    },
 }
 
 fn main() {
@@ -92,6 +97,9 @@ fn main() {
         },
         Commands::Readd { ref opts } => {
             send::readd::handle(&pocket(), opts, &mut writer)
+        },
+        Commands::TagsClear { ref opts } => {
+            send::tags_clear::handle(&pocket(), opts, &mut writer)
         },
         Commands::Unfavorite { ref opts } => {
             send::unfavorite::handle(&pocket(), opts, &mut writer)

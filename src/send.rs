@@ -29,6 +29,7 @@ send_item!(delete, Delete);
 send_item!(favorite, Favorite);
 send_item!(readd, Readd);
 send_item!(unfavorite, Unfavorite);
+send_item!(tags_clear, TagsClear);
 
 #[derive(Debug, StructOpt)]
 pub struct SendItemOpts {
