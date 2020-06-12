@@ -11,6 +11,7 @@ mod archive;
 mod readd;
 mod favorite;
 mod unfavorite;
+mod delete;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -61,6 +62,11 @@ enum Commands {
         #[structopt(flatten)]
         opts: unfavorite::UnfavoriteOpts
     },
+    /// Delete
+    Delete {
+        #[structopt(flatten)]
+        opts: delete::DeleteOpts
+    },
 }
 
 fn main() {
@@ -79,6 +85,9 @@ fn main() {
         },
         Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
         Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
+        Commands::Delete { ref opts } => {
+            delete::handle(&pocket(), opts, &mut writer)
+        },
         Commands::Favorite { ref opts } => {
             favorite::handle(&pocket(), opts, &mut writer)
         },
