@@ -7,11 +7,7 @@ use structopt::StructOpt;
 mod get;
 mod add;
 mod auth;
-mod archive;
-mod readd;
-mod favorite;
-mod unfavorite;
-mod delete;
+mod send;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -45,27 +41,27 @@ enum Commands {
     /// Archive
     Archive {
         #[structopt(flatten)]
-        opts: archive::ArchiveOpts
+        opts: send::SendItemOpts
     },
     /// Readd
     Readd {
         #[structopt(flatten)]
-        opts: readd::ReaddOpts
+        opts: send::SendItemOpts
     },
     /// Favorite
     Favorite {
         #[structopt(flatten)]
-        opts: favorite::FavoriteOpts
+        opts: send::SendItemOpts
     },
     /// Unfavorite
     Unfavorite {
         #[structopt(flatten)]
-        opts: unfavorite::UnfavoriteOpts
+        opts: send::SendItemOpts
     },
     /// Delete
     Delete {
         #[structopt(flatten)]
-        opts: delete::DeleteOpts
+        opts: send::SendItemOpts
     },
 }
 
@@ -83,22 +79,22 @@ fn main() {
         Commands::Add { opts: ref add_opts } => {
             add::handle(&pocket(), add_opts, &mut writer)
         },
-        Commands::Archive { ref opts } => archive::handle(&pocket(), opts, &mut writer),
+        Commands::Archive { ref opts } => send::archive::handle(&pocket(), opts, &mut writer),
         Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
         Commands::Delete { ref opts } => {
-            delete::handle(&pocket(), opts, &mut writer)
+            send::delete::handle(&pocket(), opts, &mut writer)
         },
         Commands::Favorite { ref opts } => {
-            favorite::handle(&pocket(), opts, &mut writer)
+            send::favorite::handle(&pocket(), opts, &mut writer)
         },
         Commands::Get { opts: ref get_opts } => {
             get::handle(&pocket(), get_opts, &mut writer)
         },
         Commands::Readd { ref opts } => {
-            readd::handle(&pocket(), opts, &mut writer)
+            send::readd::handle(&pocket(), opts, &mut writer)
         },
         Commands::Unfavorite { ref opts } => {
-            unfavorite::handle(&pocket(), opts, &mut writer)
+            send::unfavorite::handle(&pocket(), opts, &mut writer)
         },
     }
 }
