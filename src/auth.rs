@@ -19,7 +19,7 @@ pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
         Auth::Login { save } => {
             let server = TcpAuthServer::new();
             let pocket = PocketAuthentication::new(&consumer_key, server.addr());
-            login(pocket, save.clone(), server, writer)
+            login(pocket, *save, server, writer)
         }
     }
 }
