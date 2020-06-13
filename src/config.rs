@@ -37,7 +37,7 @@ pub fn load() -> Config {
     confy::load(CFG_NAME).unwrap()
 }
 
-fn store(cfg: Config) {
+pub fn store(cfg: Config) {
     confy::store(CFG_NAME, cfg).unwrap();
 }
 
