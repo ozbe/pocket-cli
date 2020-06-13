@@ -24,7 +24,12 @@ pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
     }
 }
 
-fn login(pocket: impl PocketAuth, save: bool, server: impl AuthServer, mut writer: impl std::io::Write) {
+fn login(
+    pocket: impl PocketAuth,
+    save: bool,
+    server: impl AuthServer,
+    mut writer: impl std::io::Write,
+) {
     let code = pocket.request(None).unwrap();
     writeln!(
         writer,

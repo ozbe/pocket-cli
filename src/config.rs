@@ -1,17 +1,12 @@
-use structopt::StructOpt;
 use serde::{Deserialize, Serialize};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigOpts {
     /// Get
-    Get {
-        key: String,
-    },
+    Get { key: String },
     /// Set
-    Set {
-        key: String,
-        value: Option<String>,
-    },
+    Set { key: String, value: Option<String> },
     /// View
     View,
 }
@@ -53,9 +48,10 @@ pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
                 CFG_KEY_CONSUMER_KEY => cfg.consumer_key,
                 CFG_KEY_ACCESS_TOKEN => cfg.access_token,
                 _ => panic!(format!("Invalid key: `{}`", key)),
-            }.unwrap_or_default();
+            }
+            .unwrap_or_default();
             writeln!(writer, "{}", value).unwrap();
-        },
+        }
         ConfigOpts::Set { key, value } => {
             match key.as_str() {
                 CFG_KEY_CONSUMER_KEY => cfg.consumer_key = value.clone(),
@@ -64,9 +60,9 @@ pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
             };
             store(cfg);
             writeln!(writer, "Success").unwrap();
-        },
+        }
         ConfigOpts::View => {
             writeln!(writer, "{:?}", cfg).unwrap();
-        },
+        }
     }
 }

@@ -6,11 +6,11 @@ use structopt::StructOpt;
 
 mod add;
 mod auth;
+mod config;
 mod get;
 mod send;
 mod tag;
 mod tags;
-mod config;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -93,14 +93,17 @@ enum Commands {
 }
 
 fn main() {
-    let Opts { consumer_key: opt_consumer_key, access_token: opt_access_token, command } = Opts::from_args();
+    let Opts {
+        consumer_key: opt_consumer_key,
+        access_token: opt_access_token,
+        command,
+    } = Opts::from_args();
     let cfg = config::load();
-    let consumer_key= opt_consumer_key.or(cfg.consumer_key).expect("Consumer key missing.");
+    let consumer_key = opt_consumer_key
+        .or(cfg.consumer_key)
+        .expect("Consumer key missing.");
     let access_token = opt_access_token.or(cfg.access_token);
-    let pocket = || Pocket::new(
-        &consumer_key,
-        &access_token.expect("Access token missing."),
-    );
+    let pocket = || Pocket::new(&consumer_key, &access_token.expect("Access token missing."));
     let mut writer = std::io::stdout();
 
     match command {
