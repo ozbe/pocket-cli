@@ -1,7 +1,7 @@
+use hyper::client::IntoUrl;
 use pocket::*;
 use structopt::StructOpt;
 use url::Url;
-use hyper::client::IntoUrl;
 
 #[derive(Debug, StructOpt)]
 pub struct AddOpts {
@@ -11,19 +11,23 @@ pub struct AddOpts {
     #[structopt(long = "tag")]
     tags: Option<Vec<String>>,
     #[structopt(long)]
-    tweet_id: Option<String>
+    tweet_id: Option<String>,
 }
 
 pub fn handle(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io::Write) {
-    let tags = opts.tags.as_ref()
+    let tags = opts
+        .tags
+        .as_ref()
         .map(|v| v.iter().map(|s| s.as_ref()).collect::<Vec<&str>>());
 
-    let item = pocket.add(&PocketAddRequest {
-        url: &opts.url,
-        title: opts.title.as_deref(),
-        tags: tags.as_ref().map(|v| v.as_slice()),
-        tweet_id: opts.tweet_id.as_deref(),
-    }).unwrap();
+    let item = pocket
+        .add(&PocketAddRequest {
+            url: &opts.url,
+            title: opts.title.as_deref(),
+            tags: tags.as_deref(),
+            tweet_id: opts.tweet_id.as_deref(),
+        })
+        .unwrap();
     writeln!(writer, "item: {:?}", item).unwrap();
 }
 
@@ -42,26 +46,25 @@ impl PocketAdd for Pocket {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io;
     use hyper::Url;
+    use std::io;
 
     struct WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         write_mock: W,
         flush_mock: F,
     }
 
     impl<W, F> io::Write for WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             (self.write_mock)(buf)
@@ -73,18 +76,18 @@ mod tests {
     }
 
     struct PocketAddMock<A, P>
-        where
-            A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
-            P: Fn(Url) -> PocketResult<PocketAddedItem>,
+    where
+        A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
+        P: Fn(Url) -> PocketResult<PocketAddedItem>,
     {
         add_mock: A,
         push_mock: P,
     }
 
     impl<A, P> PocketAdd for PocketAddMock<A, P>
-        where
-            A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
-            P: Fn(Url) -> PocketResult<PocketAddedItem>,
+    where
+        A: Fn(&PocketAddRequest) -> PocketResult<PocketAddedItem>,
+        P: Fn(Url) -> PocketResult<PocketAddedItem>,
     {
         fn add(&self, request: &PocketAddRequest) -> PocketResult<PocketAddedItem> {
             (self.add_mock)(request)
@@ -131,14 +134,14 @@ mod tests {
     fn add_writes_item() {
         let raw_url = "https://example.com";
         let pocket = PocketAddMock {
-            add_mock: |r|  Ok(added_item(r.url)),
+            add_mock: |r| Ok(added_item(r.url)),
             push_mock: |_| Err(PocketError::Proto(0, "".to_string())),
         };
         let opts = AddOpts {
             url: raw_url.into_url().unwrap(),
             title: None,
             tags: None,
-            tweet_id: None
+            tweet_id: None,
         };
         let mut result = Vec::new();
         let url = "https://example.com".into_url().unwrap();
@@ -161,7 +164,7 @@ mod tests {
             url: raw_url.into_url().unwrap(),
             title: None,
             tags: None,
-            tweet_id: None
+            tweet_id: None,
         };
         let mut writer = Vec::new();
 
@@ -180,7 +183,7 @@ mod tests {
             url: raw_url.into_url().unwrap(),
             title: None,
             tags: None,
-            tweet_id: None
+            tweet_id: None,
         };
         let mut writer = WriteMock {
             flush_mock: || Ok(()),
