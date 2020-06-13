@@ -27,7 +27,7 @@ $ rm pocket
 ### Windows
 
 Download the latest Windows
-[release](https://github.com/ozbe/pocket/releases) and place the executable
+[release](https://github.com/ozbe/pocket-cli/releases) and place the executable
 in a folder that is in your $PATH.
 
 ## Compile from Source
@@ -46,11 +46,11 @@ Run pocket with `pocket -h` or `pocket --help` to view the latest available flag
 commands.
 
 ```text
-pocket-cli 0.1.0
+pocket 0.1.0
 Interact with the Pocket API
 
 USAGE:
-    pocket-cli [OPTIONS] --consumer-key <consumer-key> <SUBCOMMAND>
+    pocket [OPTIONS] <SUBCOMMAND>
 
 FLAGS:
     -h, --help       Prints help information
@@ -64,6 +64,7 @@ SUBCOMMANDS:
     add             Add
     archive         Archive
     auth            Authenticate
+    config          Config
     delete          Delete
     favorite        Favorite
     get             Get

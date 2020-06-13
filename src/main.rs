@@ -6,6 +6,7 @@ use structopt::StructOpt;
 
 mod add;
 mod auth;
+mod config;
 mod get;
 mod send;
 mod tag;
@@ -16,7 +17,7 @@ mod tags;
 struct Opts {
     /// Pocket consumer key
     #[structopt(long, env = "POCKET_CONSUMER_KEY")]
-    consumer_key: String,
+    consumer_key: Option<String>,
     /// Pocket access token
     #[structopt(long, env = "POCKET_ACCESS_TOKEN")]
     access_token: Option<String>,
@@ -87,17 +88,29 @@ enum Commands {
     },
     /// Tag
     Tag(tag::Tag),
+    /// Config
+    Config(config::ConfigOpts),
 }
 
 fn main() {
-    let opts = Opts::from_args();
-    let pocket = || Pocket::new(&opts.consumer_key, &opts.access_token.as_deref().unwrap());
+    let Opts {
+        consumer_key: opt_consumer_key,
+        access_token: opt_access_token,
+        command,
+    } = Opts::from_args();
+    let cfg = config::load();
+    let consumer_key = opt_consumer_key
+        .or(cfg.consumer_key)
+        .expect("Consumer key missing.");
+    let access_token = opt_access_token.or(cfg.access_token);
+    let pocket = || Pocket::new(&consumer_key, &access_token.expect("Access token missing."));
     let mut writer = std::io::stdout();
 
-    match opts.command {
+    match command {
         Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, &mut writer),
         Commands::Archive { ref opts } => send::archive::handle(&pocket(), opts, &mut writer),
-        Commands::Auth(ref sc) => auth::handle(sc, &opts.consumer_key, &mut writer),
+        Commands::Auth(ref sc) => auth::handle(sc, &consumer_key, &mut writer),
+        Commands::Config(ref opts) => config::handle(opts, &mut writer),
         Commands::Delete { ref opts } => send::delete::handle(&pocket(), opts, &mut writer),
         Commands::Favorite { ref opts } => send::favorite::handle(&pocket(), opts, &mut writer),
         Commands::Get { opts: ref get_opts } => get::handle(&pocket(), get_opts, &mut writer),

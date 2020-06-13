@@ -6,20 +6,30 @@ use url::Url;
 
 #[derive(Debug, StructOpt)]
 pub enum Auth {
-    Login,
+    // Login
+    Login {
+        #[structopt(long)]
+        /// Save access token to config
+        save: bool,
+    },
 }
 
 pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
     match cmd {
-        Auth::Login => {
+        Auth::Login { save } => {
             let server = TcpAuthServer::new();
             let pocket = PocketAuthentication::new(&consumer_key, server.addr());
-            login(pocket, server, writer)
+            login(pocket, *save, server, writer)
         }
     }
 }
 
-fn login(pocket: impl PocketAuth, server: impl AuthServer, mut writer: impl std::io::Write) {
+fn login(
+    pocket: impl PocketAuth,
+    save: bool,
+    server: impl AuthServer,
+    mut writer: impl std::io::Write,
+) {
     let code = pocket.request(None).unwrap();
     writeln!(
         writer,
@@ -31,8 +41,16 @@ fn login(pocket: impl PocketAuth, server: impl AuthServer, mut writer: impl std:
     server.wait_for_response();
 
     let user = pocket.authorize(&code, None).unwrap();
-    writeln!(writer, "username: {}", user.username).unwrap();
-    writeln!(writer, "access token: {:?}", user.access_token).unwrap();
+
+    if save {
+        let mut cfg = crate::config::load();
+        cfg.access_token = Some(user.access_token);
+        crate::config::store(cfg);
+        writeln!(writer, "Success!").unwrap();
+    } else {
+        writeln!(writer, "username: {}", user.username).unwrap();
+        writeln!(writer, "access token: {:?}", user.access_token).unwrap();
+    }
 }
 
 trait PocketAuth {
@@ -143,7 +161,7 @@ mod tests {
         };
         let mut result = Vec::new();
 
-        login(pocket, server, &mut result);
+        login(pocket, false, server, &mut result);
 
         assert_eq!(
             format!(
