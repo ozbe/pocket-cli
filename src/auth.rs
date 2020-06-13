@@ -161,7 +161,7 @@ mod tests {
         };
         let mut result = Vec::new();
 
-        login(pocket, server, &mut result);
+        login(pocket, false, server, &mut result);
 
         assert_eq!(
             format!(
