@@ -35,10 +35,20 @@ OPTIONS:
         --consumer-key <consumer-key>    Pocket consumer key [env: POCKET_CONSUMER_KEY=]
 
 SUBCOMMANDS:
-    add     Add
-    auth    Authenticate
-    get     Get
-    help    Prints this message or the help of the given subcommand(s)
+    add             Add
+    archive         Archive
+    auth            Authenticate
+    delete          Delete
+    favorite        Favorite
+    get             Get
+    help            Prints this message or the help of the given subcommand(s)
+    readd           Readd
+    tag             Tag
+    tags-add        Add tags
+    tags-clear      Clear tags
+    tags-remove     Remove tags
+    tags-replace    Replace tags
+    unfavorite      Unfavorite
 ```
 
 ## License
