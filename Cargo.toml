@@ -1,5 +1,5 @@
 [package]
-name = "pocket-cli"
+name = "pocket"
 version = "0.1.0"
 authors = ["ozbe <1372945+ozbe@users.noreply.github.com>"]
 edition = "2018"
