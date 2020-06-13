@@ -3,7 +3,6 @@ extern crate structopt;
 
 use pocket::*;
 use structopt::StructOpt;
-use serde::{Deserialize, Serialize};
 
 mod add;
 mod auth;
@@ -11,6 +10,7 @@ mod get;
 mod send;
 mod tag;
 mod tags;
+mod config;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -88,26 +88,13 @@ enum Commands {
     },
     /// Tag
     Tag(tag::Tag),
-}
-
-#[derive(Serialize, Deserialize)]
-struct Config {
-    consumer_key: Option<String>,
-    access_token: Option<String>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            consumer_key: None,
-            access_token: None,
-        }
-    }
+    /// Config
+    Config(config::ConfigOpts),
 }
 
 fn main() {
     let Opts { consumer_key: opt_consumer_key, access_token: opt_access_token, command } = Opts::from_args();
-    let cfg: Config = confy::load(env!("CARGO_PKG_NAME")).unwrap();
+    let cfg = config::load();
     let consumer_key= opt_consumer_key.or(cfg.consumer_key).expect("Consumer key missing.");
     let access_token = opt_access_token.or(cfg.access_token);
     let pocket = || Pocket::new(
@@ -120,6 +107,7 @@ fn main() {
         Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, &mut writer),
         Commands::Archive { ref opts } => send::archive::handle(&pocket(), opts, &mut writer),
         Commands::Auth(ref sc) => auth::handle(sc, &consumer_key, &mut writer),
+        Commands::Config(ref opts) => config::handle(opts, &mut writer),
         Commands::Delete { ref opts } => send::delete::handle(&pocket(), opts, &mut writer),
         Commands::Favorite { ref opts } => send::favorite::handle(&pocket(), opts, &mut writer),
         Commands::Get { opts: ref get_opts } => get::handle(&pocket(), get_opts, &mut writer),
