@@ -9,6 +9,7 @@ mod add;
 mod auth;
 mod send;
 mod tags;
+mod tag;
 
 #[derive(Debug, StructOpt)]
 /// Interact with the Pocket API.
@@ -84,6 +85,8 @@ enum Commands {
         #[structopt(flatten)]
         opts: tags::TagsOpts
     },
+    /// Tag
+    Tag(tag::Tag),
 }
 
 fn main() {
@@ -113,6 +116,9 @@ fn main() {
         },
         Commands::Readd { ref opts } => {
             send::readd::handle(&pocket(), opts, &mut writer)
+        },
+        Commands::Tag(ref tag) => {
+            tag::handle(&pocket(), tag, &mut writer)
         },
         Commands::TagsAdd { ref opts } => {
             tags::tags_add::handle(&pocket(), opts, &mut writer)
