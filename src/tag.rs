@@ -4,12 +4,14 @@ use chrono::{Utc, DateTime};
 
 #[derive(Debug, StructOpt)]
 pub enum Tag {
+    /// Rename
     Rename {
         old_tag: String,
         new_tag: String,
         #[structopt(long)]
         time: Option<DateTime<Utc>>,
     },
+    /// Delete
     Delete {
         tag: String,
         #[structopt(long)]
