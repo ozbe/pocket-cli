@@ -87,11 +87,11 @@ impl TcpAuthServer {
 
     fn handle_connection(mut stream: TcpStream) {
         let mut buffer = [0; 512];
-        stream.read_exact(&mut buffer).unwrap();
+        stream.read(&mut buffer).unwrap();
 
         let response = format!("HTTP/1.1 200 OK\r\n\r\n{}", AUTH_SUCCESS_RESPONSE_BODY);
 
-        stream.write_all(response.as_bytes()).unwrap();
+        stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
     }
 
