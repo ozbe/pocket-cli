@@ -24,7 +24,7 @@ pub fn handle(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io:
         .add(&PocketAddRequest {
             url: &opts.url,
             title: opts.title.as_deref(),
-            tags: tags.as_ref().map(|v| v.as_slice()),
+            tags: tags.as_deref(),
             tweet_id: opts.tweet_id.as_deref(),
         })
         .unwrap();
