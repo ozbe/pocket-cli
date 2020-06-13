@@ -41,22 +41,25 @@ pub fn store(cfg: Config) {
     confy::store(CFG_NAME, cfg).unwrap();
 }
 
+const CFG_KEY_CONSUMER_KEY: &str = "consumer_key";
+const CFG_KEY_ACCESS_TOKEN: &str = "access_token";
+
 pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
     let mut cfg = load();
 
     match opts {
         ConfigOpts::Get { key } => {
             let value = match key.as_str() {
-                "consumer_key" => cfg.consumer_key,
-                "access_token" => cfg.access_token,
+                CFG_KEY_CONSUMER_KEY => cfg.consumer_key,
+                CFG_KEY_ACCESS_TOKEN => cfg.access_token,
                 _ => panic!(format!("Invalid key: `{}`", key)),
             }.unwrap_or_default();
             writeln!(writer, "{}", value).unwrap();
         },
         ConfigOpts::Set { key, value } => {
             match key.as_str() {
-                "consumer_key" => cfg.consumer_key = value.clone(),
-                "access_token" => cfg.access_token = value.clone(),
+                CFG_KEY_CONSUMER_KEY => cfg.consumer_key = value.clone(),
+                CFG_KEY_ACCESS_TOKEN => cfg.access_token = value.clone(),
                 _ => panic!(format!("Invalid key: `{}`", key)),
             };
             store(cfg);
