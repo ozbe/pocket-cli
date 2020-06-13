@@ -1,27 +1,27 @@
 use chrono::{DateTime, Utc};
-use pocket::{PocketSendRequest, PocketResult, PocketSendResponse, Pocket};
+use pocket::{Pocket, PocketResult, PocketSendRequest, PocketSendResponse};
 use structopt::StructOpt;
 
 macro_rules! send_item {
-    ($command:ident, $action:ident) => (
+    ($command:ident, $action:ident) => {
         pub mod $command {
             use super::{PocketSend, SendItemOpts};
-            use pocket::{PocketSendRequest, PocketSendAction};
+            use pocket::{PocketSendAction, PocketSendRequest};
             use std::io::Write;
 
             pub fn handle(pocket: &impl PocketSend, opts: &SendItemOpts, mut writer: impl Write) {
-                let response = pocket.send(&PocketSendRequest {
-                    actions: &[
-                        &PocketSendAction::$action {
+                let response = pocket
+                    .send(&PocketSendRequest {
+                        actions: &[&PocketSendAction::$action {
                             item_id: opts.item_id,
-                            time: opts.time.map(|t| t.timestamp() as u64)
-                        }
-                    ],
-                }).unwrap();
+                            time: opts.time.map(|t| t.timestamp() as u64),
+                        }],
+                    })
+                    .unwrap();
                 writeln!(writer, "response: {:?}", response).unwrap();
             }
         }
-    )
+    };
 }
 
 send_item!(archive, Archive);

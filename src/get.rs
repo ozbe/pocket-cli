@@ -1,9 +1,8 @@
-use pocket::*;
 use chrono::{DateTime, Utc};
-use structopt::StructOpt;
+use pocket::*;
 use std::io;
 use std::io::ErrorKind;
-
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct GetOpts {
@@ -49,9 +48,13 @@ pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io:
         // tag match
         match (&opts.tag, opts.untagged) {
             (Some(_), true) => panic!("Cannot set tag and untagged"),
-            (Some(tag), false) => { f.tag(PocketGetTag::Tagged(tag)); },
-            (None, true) => { f.tag(PocketGetTag::Untagged); },
-            (None, false) => {},
+            (Some(tag), false) => {
+                f.tag(PocketGetTag::Tagged(tag));
+            }
+            (None, true) => {
+                f.tag(PocketGetTag::Untagged);
+            }
+            (None, false) => {}
         }
 
         // state
@@ -90,10 +93,10 @@ pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io:
         }
 
         pocket.get(&f)
-    }.unwrap();
+    }
+    .unwrap();
     writeln!(writer, "items: {:?}", items).unwrap();
 }
-
 
 pub trait PocketGet {
     fn filter(&self) -> PocketGetRequest;
@@ -116,18 +119,18 @@ mod tests {
     use std::io;
 
     struct PocketGetMock<'a, F, G>
-        where
-            F: Fn() -> PocketGetRequest<'a>,
-            G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
+    where
+        F: Fn() -> PocketGetRequest<'a>,
+        G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
     {
         filter_mock: F,
-        get_mock: G
+        get_mock: G,
     }
 
     impl<'a, F, G> PocketGet for PocketGetMock<'a, F, G>
-        where
-            F: Fn() -> PocketGetRequest<'a>,
-            G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
+    where
+        F: Fn() -> PocketGetRequest<'a>,
+        G: Fn(&PocketGetRequest) -> PocketResult<Vec<PocketItem>>,
     {
         fn filter(&self) -> PocketGetRequest {
             (self.filter_mock)()
@@ -139,18 +142,18 @@ mod tests {
     }
 
     struct WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         write_mock: W,
         flush_mock: F,
     }
 
     impl<W, F> io::Write for WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             (self.write_mock)(buf)
@@ -180,7 +183,7 @@ mod tests {
             since: None,
             sort: None,
             count: None,
-            offset: None
+            offset: None,
         };
         let mut result = Vec::new();
 
@@ -208,7 +211,7 @@ mod tests {
             since: None,
             sort: None,
             count: None,
-            offset: None
+            offset: None,
         };
         let mut writer = Vec::new();
 
@@ -234,7 +237,7 @@ mod tests {
             since: None,
             sort: None,
             count: None,
-            offset: None
+            offset: None,
         };
         let mut writer = WriteMock {
             flush_mock: || Ok(()),
@@ -245,13 +248,15 @@ mod tests {
     }
 }
 
-
 fn parse_get_state(s: &str) -> Result<PocketGetState, io::Error> {
     match s {
         "unread" => Ok(PocketGetState::Unread),
         "archive" => Ok(PocketGetState::Archive),
         "all" => Ok(PocketGetState::All),
-        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid state: {}", s))),
+        _ => Err(io::Error::new(
+            ErrorKind::Other,
+            format!("Invalid state: {}", s),
+        )),
     }
 }
 
@@ -260,7 +265,10 @@ fn parse_get_content_type(s: &str) -> Result<PocketGetType, io::Error> {
         "article" => Ok(PocketGetType::Article),
         "video" => Ok(PocketGetType::Video),
         "image" => Ok(PocketGetType::Image),
-        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid content type: {}", s))),
+        _ => Err(io::Error::new(
+            ErrorKind::Other,
+            format!("Invalid content type: {}", s),
+        )),
     }
 }
 
@@ -268,7 +276,10 @@ fn parse_get_detail_type(s: &str) -> Result<PocketGetDetail, io::Error> {
     match s {
         "simple" => Ok(PocketGetDetail::Simple),
         "complete" => Ok(PocketGetDetail::Complete),
-        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid detail type: {}", s))),
+        _ => Err(io::Error::new(
+            ErrorKind::Other,
+            format!("Invalid detail type: {}", s),
+        )),
     }
 }
 
@@ -278,6 +289,9 @@ fn parse_get_sort(s: &str) -> Result<PocketGetSort, io::Error> {
         "oldest" => Ok(PocketGetSort::Oldest),
         "title" => Ok(PocketGetSort::Title),
         "site" => Ok(PocketGetSort::Site),
-        _ => Err(io::Error::new(ErrorKind::Other, format!("Invalid sort: {}", s))),
+        _ => Err(io::Error::new(
+            ErrorKind::Other,
+            format!("Invalid sort: {}", s),
+        )),
     }
 }

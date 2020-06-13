@@ -1,28 +1,32 @@
 use chrono::{DateTime, Utc};
-use pocket::{PocketSendRequest, PocketResult, PocketSendResponse, Pocket};
+use pocket::{Pocket, PocketResult, PocketSendRequest, PocketSendResponse};
 use structopt::StructOpt;
 
 macro_rules! tags {
-    ($command:ident, $action:ident) => (
+    ($command:ident, $action:ident) => {
         pub mod $command {
             use super::{PocketSend, TagsOpts};
-            use pocket::{PocketSendRequest, PocketSendAction};
+            use pocket::{PocketSendAction, PocketSendRequest};
             use std::io::Write;
 
             pub fn handle(pocket: &impl PocketSend, opts: &TagsOpts, mut writer: impl Write) {
-                let response = pocket.send(&PocketSendRequest {
-                    actions: &[
-                        &PocketSendAction::$action {
+                let response = pocket
+                    .send(&PocketSendRequest {
+                        actions: &[&PocketSendAction::$action {
                             item_id: opts.item_id,
-                            tags: opts.tags.as_ref().map(|tags| tags.join(",")).unwrap_or("".to_string()),
-                            time: opts.time.map(|t| t.timestamp() as u64)
-                        }
-                    ],
-                }).unwrap();
+                            tags: opts
+                                .tags
+                                .as_ref()
+                                .map(|tags| tags.join(","))
+                                .unwrap_or("".to_string()),
+                            time: opts.time.map(|t| t.timestamp() as u64),
+                        }],
+                    })
+                    .unwrap();
                 writeln!(writer, "response: {:?}", response).unwrap();
             }
         }
-    )
+    };
 }
 
 tags!(tags_add, TagsAdd);

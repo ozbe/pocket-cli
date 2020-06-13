@@ -1,7 +1,7 @@
 use pocket::*;
-use structopt::StructOpt;
-use std::net::{TcpListener, TcpStream};
 use std::io::prelude::*;
+use std::net::{TcpListener, TcpStream};
+use structopt::StructOpt;
 use url::Url;
 
 #[derive(Debug, StructOpt)]
@@ -15,13 +15,18 @@ pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
             let server = TcpAuthServer::new();
             let pocket = PocketAuthentication::new(&consumer_key, server.addr());
             login(pocket, server, writer)
-        },
+        }
     }
 }
 
 fn login(pocket: impl PocketAuth, server: impl AuthServer, mut writer: impl std::io::Write) {
     let code = pocket.request(None).unwrap();
-    writeln!(writer, "Follow auth URL to provide access: {}", pocket.authorize_url(&code)).unwrap();
+    writeln!(
+        writer,
+        "Follow auth URL to provide access: {}",
+        pocket.authorize_url(&code)
+    )
+    .unwrap();
 
     server.wait_for_response();
 
@@ -70,10 +75,7 @@ impl TcpAuthServer {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = format!("http://{}", listener.local_addr().unwrap());
 
-        TcpAuthServer {
-            listener,
-            addr
-        }
+        TcpAuthServer { listener, addr }
     }
 
     fn wait_for_response(&self) {
@@ -115,9 +117,9 @@ const AUTH_SUCCESS_RESPONSE_BODY: &'static str = r#"
 
 #[cfg(test)]
 mod tests {
-    use std::io;
     use super::*;
-    use pocket::{PocketUser, PocketResult};
+    use pocket::{PocketResult, PocketUser};
+    use std::io;
 
     #[test]
     fn login_writes_user() {
@@ -128,14 +130,16 @@ mod tests {
         let pocket = PocketAuthMock {
             request_mock: |_s| Ok(code.to_string()),
             authorize_url: |_c| Url::parse(url).unwrap(),
-            authorize_mock: |_c, _s| Ok(PocketUser {
-                consumer_key: "".to_string(),
-                access_token: access_token.to_string(),
-                username: username.to_string()
-            })
+            authorize_mock: |_c, _s| {
+                Ok(PocketUser {
+                    consumer_key: "".to_string(),
+                    access_token: access_token.to_string(),
+                    username: username.to_string(),
+                })
+            },
         };
         let server = AuthServerMock {
-            wait_for_response_mock: || {}
+            wait_for_response_mock: || {},
         };
         let mut result = Vec::new();
 
@@ -144,9 +148,7 @@ mod tests {
         assert_eq!(
             format!(
                 "Follow auth URL to provide access: {}\nusername: {}\naccess token: {:?}\n",
-                url,
-                username,
-                access_token
+                url, username, access_token
             ),
             to_string(&result)
         )
@@ -157,10 +159,10 @@ mod tests {
     }
 
     struct PocketAuthMock<R, U, A>
-        where
-            R: Fn(Option<&str>) -> PocketResult<String>,
-            U: Fn(&str) -> Url,
-            A: Fn(&str, Option<&str>) -> PocketResult<PocketUser>,
+    where
+        R: Fn(Option<&str>) -> PocketResult<String>,
+        U: Fn(&str) -> Url,
+        A: Fn(&str, Option<&str>) -> PocketResult<PocketUser>,
     {
         request_mock: R,
         authorize_url: U,
@@ -168,10 +170,10 @@ mod tests {
     }
 
     impl<R, U, A> PocketAuth for PocketAuthMock<R, U, A>
-        where
-            R: Fn(Option<&str>) -> PocketResult<String>,
-            U: Fn(&str) -> Url,
-            A: Fn(&str, Option<&str>) -> PocketResult<PocketUser>,
+    where
+        R: Fn(Option<&str>) -> PocketResult<String>,
+        U: Fn(&str) -> Url,
+        A: Fn(&str, Option<&str>) -> PocketResult<PocketUser>,
     {
         fn request(&self, state: Option<&str>) -> PocketResult<String> {
             (self.request_mock)(state)
@@ -187,15 +189,15 @@ mod tests {
     }
 
     struct AuthServerMock<W>
-        where
-            W: Fn()
+    where
+        W: Fn(),
     {
         wait_for_response_mock: W,
     }
 
     impl<W> AuthServer for AuthServerMock<W>
-        where
-            W: Fn()
+    where
+        W: Fn(),
     {
         fn wait_for_response(&self) {
             (self.wait_for_response_mock)()
@@ -203,18 +205,18 @@ mod tests {
     }
 
     struct WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         write_mock: W,
         flush_mock: F,
     }
 
     impl<W, F> io::Write for WriteMock<W, F>
-        where
-            W: Fn(&[u8]) -> io::Result<usize>,
-            F: Fn() -> io::Result<()>,
+    where
+        W: Fn(&[u8]) -> io::Result<usize>,
+        F: Fn() -> io::Result<()>,
     {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             (self.write_mock)(buf)
