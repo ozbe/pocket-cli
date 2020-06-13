@@ -84,7 +84,7 @@ impl TcpAuthServer {
             TcpAuthServer::handle_connection(stream)
         }
     }
-
+    #[allow(clippy::unused_io_amount)]
     fn handle_connection(mut stream: TcpStream) {
         let mut buffer = [0; 512];
         stream.read(&mut buffer).unwrap();
