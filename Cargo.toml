@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 confy = "0.3.1"
+convey = "0.2.0"
 hyper = "0.10.16"
 pocket = { git = "https://github.com/ozbe/rust-pocket.git" }
 serde = "1.0.111"

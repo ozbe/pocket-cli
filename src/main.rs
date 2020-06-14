@@ -1,8 +1,7 @@
-extern crate pocket;
-extern crate structopt;
-
+use convey::{human, json};
 use pocket::*;
 use structopt::StructOpt;
+use std::fmt;
 
 mod add;
 mod auth;
@@ -21,9 +20,46 @@ struct Opts {
     /// Pocket access token
     #[structopt(long, env = "POCKET_ACCESS_TOKEN")]
     access_token: Option<String>,
+    #[structopt(default_value, long)]
+    output: Output,
     /// Subcommand
     #[structopt(subcommand)]
     command: Commands,
+}
+
+#[derive(Debug)]
+enum Output {
+    Text,
+    Json,
+}
+
+impl std::str::FromStr for Output {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "text" => Ok(Output::Text),
+            "json" => Ok(Output::Json),
+            _ => Err(format!("Unexpected output: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for Output {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let display = match self {
+            Output::Text => "text",
+            Output::Json => "json",
+        }.to_string();
+
+        write!(f, "{}", display)
+    }
+}
+
+impl Default for Output {
+    fn default() -> Self {
+        Output::Text
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -96,6 +132,7 @@ fn main() {
     let Opts {
         consumer_key: opt_consumer_key,
         access_token: opt_access_token,
+        output,
         command,
     } = Opts::from_args();
     let cfg = config::load();
@@ -105,6 +142,10 @@ fn main() {
     let access_token = opt_access_token.or(cfg.access_token);
     let pocket = || Pocket::new(&consumer_key, &access_token.expect("Access token missing."));
     let mut writer = std::io::stdout();
+    let _out = match output {
+        Output::Text => convey::new().add_target(human::stdout().unwrap()).unwrap(),
+        Output::Json => convey::new().add_target(json::stdout().unwrap()).unwrap(),
+    };
 
     match command {
         Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, &mut writer),
