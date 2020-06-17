@@ -1,3 +1,5 @@
+use crate::output::Item;
+use convey::Output;
 use hyper::client::IntoUrl;
 use pocket::*;
 use structopt::StructOpt;
@@ -14,21 +16,59 @@ pub struct AddOpts {
     tweet_id: Option<String>,
 }
 
-pub fn handle(pocket: &impl PocketAdd, opts: &AddOpts, mut writer: impl std::io::Write) {
+pub fn handle(pocket: &impl PocketAdd, opts: &AddOpts, out: Output) {
     let tags = opts
         .tags
         .as_ref()
         .map(|v| v.iter().map(|s| s.as_ref()).collect::<Vec<&str>>());
 
-    let item = pocket
+    let item: Item = pocket
         .add(&PocketAddRequest {
             url: &opts.url,
             title: opts.title.as_deref(),
             tags: tags.as_deref(),
             tweet_id: opts.tweet_id.as_deref(),
         })
-        .unwrap();
-    writeln!(writer, "item: {:?}", item).unwrap();
+        .unwrap()
+        .into();
+    out.print(item).unwrap();
+}
+
+impl From<PocketAddedItem> for Item {
+    fn from(p: PocketAddedItem) -> Self {
+        Item {
+            item_id: p.item_id,
+            given_url: p.given_url,
+            given_title: None,
+            word_count: p.word_count,
+            excerpt: p.excerpt,
+            time_added: None,
+            time_read: None,
+            time_updated: None,
+            time_favorited: None,
+            favorite: None,
+            is_index: p.is_index,
+            is_article: p.is_article,
+            has_image: p.has_image.into(),
+            has_video: p.has_video.into(),
+            resolved_id: p.resolved_id,
+            resolved_title: None,
+            resolved_url: p.resolved_url,
+            sort_id: None,
+            status: None,
+            tags: None,
+            images: p.images.map(|v| v.into_iter().map(|i| i.into()).collect()),
+            videos: p.videos.map(|v| v.into_iter().map(|i| i.into()).collect()),
+            authors: p.authors.map(|v| v.into_iter().map(|i| i.into()).collect()),
+            lang: p.lang,
+            time_to_read: None,
+            domain_metadata: None,
+            listen_duration_estimate: None,
+            image: None,
+            amp_url: None,
+            top_image_url: None,
+        }
+    }
 }
 
 pub trait PocketAdd {
@@ -49,31 +89,8 @@ impl PocketAdd for Pocket {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use convey::json;
     use hyper::Url;
-    use std::io;
-
-    struct WriteMock<W, F>
-    where
-        W: Fn(&[u8]) -> io::Result<usize>,
-        F: Fn() -> io::Result<()>,
-    {
-        write_mock: W,
-        flush_mock: F,
-    }
-
-    impl<W, F> io::Write for WriteMock<W, F>
-    where
-        W: Fn(&[u8]) -> io::Result<usize>,
-        F: Fn() -> io::Result<()>,
-    {
-        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-            (self.write_mock)(buf)
-        }
-
-        fn flush(&mut self) -> io::Result<()> {
-            (self.flush_mock)()
-        }
-    }
 
     struct PocketAddMock<A, P>
     where
@@ -104,28 +121,31 @@ mod tests {
             normal_url: url.clone(),
             resolved_id: 0,
             extended_item_id: 0,
-            resolved_url: url.clone(),
+            resolved_url: Some(url.clone()),
             domain_id: 0,
             origin_domain_id: 0,
             response_code: 0,
-            mime_type: "".to_string(),
+            mime_type: None,
             content_length: 0,
             encoding: "".to_string(),
-            date_resolved: "".to_string(),
-            date_published: "".to_string(),
+            date_resolved: None,
+            date_published: None,
             title: "".to_string(),
             excerpt: "".to_string(),
             word_count: 0,
+            innerdomain_redirect: false,
             login_required: false,
             has_image: PocketItemHas::No,
             has_video: PocketItemHas::No,
             is_index: false,
             is_article: false,
             used_fallback: false,
-            lang: "".to_string(),
-            authors: vec![],
-            images: vec![],
-            videos: vec![],
+            lang: None,
+            time_first_parsed: None,
+            authors: None,
+            images: None,
+            videos: None,
+            resolved_normal_url: None,
             given_url: url.clone(),
         }
     }
@@ -143,13 +163,17 @@ mod tests {
             tags: None,
             tweet_id: None,
         };
-        let mut result = Vec::new();
         let url = "https://example.com".into_url().unwrap();
-        let expected_item = added_item(&url);
+        let expected_result = {
+            let expected_item: Item = added_item(&url).into();
+            format!("{}\n", serde_json::to_string(&expected_item).unwrap())
+        };
+        let test_target = json::test();
+        let out = convey::new().add_target(test_target.target()).unwrap();
 
-        handle(&pocket, &opts, &mut result);
+        handle(&pocket, &opts, out);
 
-        assert_eq!(format!("item: {:?}\n", expected_item).into_bytes(), result);
+        assert_eq!(expected_result, test_target.to_string());
     }
 
     #[test]
@@ -166,30 +190,9 @@ mod tests {
             tags: None,
             tweet_id: None,
         };
-        let mut writer = Vec::new();
+        let test_target = json::test();
+        let out = convey::new().add_target(test_target.target()).unwrap();
 
-        handle(&pocket, &opts, &mut writer);
-    }
-
-    #[test]
-    #[should_panic]
-    fn add_panics_when_write_error() {
-        let raw_url = "https://example.com";
-        let pocket = PocketAddMock {
-            add_mock: |r| Ok(added_item(r.url)),
-            push_mock: |_| Ok(added_item(&raw_url.into_url().unwrap())),
-        };
-        let opts = AddOpts {
-            url: raw_url.into_url().unwrap(),
-            title: None,
-            tags: None,
-            tweet_id: None,
-        };
-        let mut writer = WriteMock {
-            flush_mock: || Ok(()),
-            write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
-        };
-
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, out);
     }
 }

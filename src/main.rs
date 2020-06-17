@@ -1,12 +1,16 @@
+#[macro_use]
+extern crate convey;
+
 use convey::{human, json};
 use pocket::*;
-use structopt::StructOpt;
 use std::fmt;
+use structopt::StructOpt;
 
 mod add;
 mod auth;
 mod config;
 mod get;
+mod output;
 mod send;
 mod tag;
 mod tags;
@@ -50,7 +54,8 @@ impl fmt::Display for Output {
         let display = match self {
             Output::Text => "text",
             Output::Json => "json",
-        }.to_string();
+        }
+        .to_string();
 
         write!(f, "{}", display)
     }
@@ -142,13 +147,13 @@ fn main() {
     let access_token = opt_access_token.or(cfg.access_token);
     let pocket = || Pocket::new(&consumer_key, &access_token.expect("Access token missing."));
     let mut writer = std::io::stdout();
-    let _out = match output {
+    let out = match output {
         Output::Text => convey::new().add_target(human::stdout().unwrap()).unwrap(),
         Output::Json => convey::new().add_target(json::stdout().unwrap()).unwrap(),
     };
 
     match command {
-        Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, &mut writer),
+        Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, out),
         Commands::Archive { ref opts } => send::archive::handle(&pocket(), opts, &mut writer),
         Commands::Auth(ref sc) => auth::handle(sc, &consumer_key, &mut writer),
         Commands::Config(ref opts) => config::handle(opts, &mut writer),
