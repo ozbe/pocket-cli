@@ -44,9 +44,9 @@ pub struct Item {
 }
 
 impl convey::Render for Item {
-    fn render_for_humans(&self, _fmt: &mut Formatter) -> Result<(), Error> {
-        // FIXME - render_for_humans!();
-        unimplemented!()
+    fn render_for_humans(&self, fmt: &mut Formatter) -> Result<(), Error> {
+        fmt.write(format!("{:?}", self).as_bytes())?;
+        Ok(())
     }
 
     render_json!();

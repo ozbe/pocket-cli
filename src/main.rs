@@ -159,7 +159,7 @@ fn main() {
         Commands::Config(ref opts) => config::handle(opts, &mut writer),
         Commands::Delete { ref opts } => send::delete::handle(&pocket(), opts, &mut writer),
         Commands::Favorite { ref opts } => send::favorite::handle(&pocket(), opts, &mut writer),
-        Commands::Get { opts: ref get_opts } => get::handle(&pocket(), get_opts, &mut writer),
+        Commands::Get { opts: ref get_opts } => get::handle(&pocket(), get_opts, out),
         Commands::Readd { ref opts } => send::readd::handle(&pocket(), opts, &mut writer),
         Commands::Tag(ref tag) => tag::handle(&pocket(), tag, &mut writer),
         Commands::TagsAdd { ref opts } => tags::tags_add::handle(&pocket(), opts, &mut writer),

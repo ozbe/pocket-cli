@@ -3,6 +3,8 @@ use pocket::*;
 use std::io;
 use std::io::ErrorKind;
 use structopt::StructOpt;
+use crate::output::Item;
+use convey::Output;
 
 #[derive(Debug, StructOpt)]
 pub struct GetOpts {
@@ -32,8 +34,7 @@ pub struct GetOpts {
     offset: Option<usize>,
 }
 
-pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io::Write) {
-    let items = {
+pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, out: Output) {
         let mut f = pocket.filter();
 
         if let Some(search) = &opts.search {
@@ -93,9 +94,47 @@ pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io:
         }
 
         pocket.get(&f)
+            .unwrap()
+            .into_iter()
+            .map(|i| i.into())
+            .for_each(|i: Item| out.print(i).unwrap());
+}
+
+impl From<PocketItem> for Item {
+    fn from(p: PocketItem) -> Self {
+        Item {
+            item_id: p.item_id,
+            given_url: p.given_url,
+            given_title: Some(p.given_title),
+            word_count: p.word_count,
+            excerpt: p.excerpt,
+            time_added: Some(p.time_added),
+            time_read: p.time_read,
+            time_updated: Some(p.time_updated),
+            time_favorited: p.time_favorited,
+            favorite: Some(p.favorite),
+            is_index: p.is_index,
+            is_article: p.is_article,
+            has_image: p.has_image.into(),
+            has_video: p.has_video.into(),
+            resolved_id: p.resolved_id,
+            resolved_title: Some(p.resolved_title),
+            resolved_url: p.resolved_url,
+            sort_id: Some(p.sort_id),
+            status: Some(p.status.into()),
+            tags: p.tags.map(|v| v.into_iter().map(|t| t.into()).collect()),
+            images: p.images.map(|v| v.into_iter().map(|i| i.into()).collect()),
+            videos: p.videos.map(|v| v.into_iter().map(|v| v.into()).collect()),
+            authors: p.authors.map(|v| v.into_iter().map(|a| a.into()).collect()),
+            lang: Some(p.lang),
+            time_to_read: p.time_to_read,
+            domain_metadata: p.domain_metadata.map(|d| d.into()),
+            listen_duration_estimate: p.listen_duration_estimate,
+            image: p.image.map(|i| i.into()),
+            amp_url: p.amp_url,
+            top_image_url: p.top_image_url
+        }
     }
-    .unwrap();
-    writeln!(writer, "items: {:?}", items).unwrap();
 }
 
 pub trait PocketGet {
@@ -117,6 +156,7 @@ impl PocketGet for Pocket {
 mod tests {
     use super::*;
     use std::io;
+    use convey::json;
 
     struct PocketGetMock<'a, F, G>
     where
@@ -185,11 +225,19 @@ mod tests {
             count: None,
             offset: None,
         };
-        let mut result = Vec::new();
+        let expected_result = {
+            items.into_iter()
+                .map(|i| i.into())
+                .map(|i: Item| serde_json::to_string(&i).unwrap())
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let test_target = json::test();
+        let out = convey::new().add_target(test_target.target()).unwrap();
 
-        handle(&pocket, &opts, &mut result);
+        handle(&pocket, &opts, out);
 
-        assert_eq!(format!("items: {:?}\n", &items).into_bytes(), result);
+        assert_eq!(expected_result, test_target.to_string());
     }
 
     #[test]
@@ -213,38 +261,10 @@ mod tests {
             count: None,
             offset: None,
         };
-        let mut writer = Vec::new();
+        let test_target = json::test();
+        let out = convey::new().add_target(test_target.target()).unwrap();
 
-        handle(&pocket, &opts, &mut writer);
-    }
-
-    #[test]
-    #[should_panic]
-    fn get_panics_when_write_error() {
-        let pocket = PocketGetMock {
-            filter_mock: || PocketGetRequest::new(),
-            get_mock: |_| Ok(vec![]),
-        };
-        let opts = GetOpts {
-            search: None,
-            domain: None,
-            tag: None,
-            untagged: false,
-            state: None,
-            content_type: None,
-            detail_type: None,
-            favorite: None,
-            since: None,
-            sort: None,
-            count: None,
-            offset: None,
-        };
-        let mut writer = WriteMock {
-            flush_mock: || Ok(()),
-            write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
-        };
-
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, out);
     }
 }
 
