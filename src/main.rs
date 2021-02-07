@@ -98,32 +98,56 @@ fn main() {
         access_token: opt_access_token,
         command,
     } = Opts::from_args();
-    let cfg = config::load();
-    let consumer_key = opt_consumer_key
-        .or(cfg.consumer_key)
-        .expect("Consumer key missing.");
-    let access_token = opt_access_token.or(cfg.access_token);
-    let pocket = || Pocket::new(&consumer_key, &access_token.expect("Access token missing."));
+    let config::Config {
+        consumer_key: cfg_consumer_key,
+        access_token: cfg_access_token,
+    } = config::load();
+    let consumer_key = || {
+        opt_consumer_key
+            .or(cfg_consumer_key)
+            .expect("Consumer key missing.")
+    };
+    let access_token = opt_access_token.or(cfg_access_token);
+    let pocket =
+        |consumer_key| Pocket::new(consumer_key, &access_token.expect("Access token missing."));
     let mut writer = std::io::stdout();
 
     match command {
-        Commands::Add { opts: ref add_opts } => add::handle(&pocket(), add_opts, &mut writer),
-        Commands::Archive { ref opts } => send::archive::handle(&pocket(), opts, &mut writer),
-        Commands::Auth(ref sc) => auth::handle(sc, &consumer_key, &mut writer),
+        Commands::Add { opts: ref add_opts } => {
+            add::handle(&pocket(&consumer_key()), add_opts, &mut writer)
+        }
+        Commands::Archive { ref opts } => {
+            send::archive::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
+        Commands::Auth(ref sc) => auth::handle(sc, &consumer_key(), &mut writer),
         Commands::Config(ref opts) => config::handle(opts, &mut writer),
-        Commands::Delete { ref opts } => send::delete::handle(&pocket(), opts, &mut writer),
-        Commands::Favorite { ref opts } => send::favorite::handle(&pocket(), opts, &mut writer),
-        Commands::Get { opts: ref get_opts } => get::handle(&pocket(), get_opts, &mut writer),
-        Commands::Readd { ref opts } => send::readd::handle(&pocket(), opts, &mut writer),
-        Commands::Tag(ref tag) => tag::handle(&pocket(), tag, &mut writer),
-        Commands::TagsAdd { ref opts } => tags::tags_add::handle(&pocket(), opts, &mut writer),
-        Commands::TagsClear { ref opts } => send::tags_clear::handle(&pocket(), opts, &mut writer),
+        Commands::Delete { ref opts } => {
+            send::delete::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
+        Commands::Favorite { ref opts } => {
+            send::favorite::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
+        Commands::Get { opts: ref get_opts } => {
+            get::handle(&pocket(&consumer_key()), get_opts, &mut writer)
+        }
+        Commands::Readd { ref opts } => {
+            send::readd::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
+        Commands::Tag(ref tag) => tag::handle(&pocket(&consumer_key()), tag, &mut writer),
+        Commands::TagsAdd { ref opts } => {
+            tags::tags_add::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
+        Commands::TagsClear { ref opts } => {
+            send::tags_clear::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
         Commands::TagsRemove { ref opts } => {
-            tags::tags_remove::handle(&pocket(), opts, &mut writer)
+            tags::tags_remove::handle(&pocket(&consumer_key()), opts, &mut writer)
         }
         Commands::TagsReplace { ref opts } => {
-            tags::tags_replace::handle(&pocket(), opts, &mut writer)
+            tags::tags_replace::handle(&pocket(&consumer_key()), opts, &mut writer)
         }
-        Commands::Unfavorite { ref opts } => send::unfavorite::handle(&pocket(), opts, &mut writer),
+        Commands::Unfavorite { ref opts } => {
+            send::unfavorite::handle(&pocket(&consumer_key()), opts, &mut writer)
+        }
     }
 }
