@@ -174,3 +174,18 @@ impl From<PocketItemStatus> for ItemStatus {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct IndividualSendResponse {
+    pub status: u16,
+    pub success: bool,
+}
+
+impl From<PocketSendResponse> for IndividualSendResponse {
+    fn from(p: PocketSendResponse) -> Self {
+        IndividualSendResponse {
+            status: p.status,
+            success: p.action_results[0],
+        }
+    }
+}

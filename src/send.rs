@@ -8,17 +8,20 @@ macro_rules! send_item {
             use super::{PocketSend, SendItemOpts};
             use pocket::{PocketSendAction, PocketSendRequest};
             use std::io::Write;
+            use crate::output::Output;
+            use crate::models::IndividualSendResponse;
 
-            pub fn handle(pocket: &impl PocketSend, opts: &SendItemOpts, mut writer: impl Write) {
-                let response = pocket
+            pub fn handle<W: Write>(pocket: &impl PocketSend, opts: &SendItemOpts, output: &mut Output<W>) {
+                let response: IndividualSendResponse = pocket
                     .send(&PocketSendRequest {
                         actions: &[&PocketSendAction::$action {
                             item_id: opts.item_id,
                             time: opts.time.map(|t| t.timestamp() as u64),
                         }],
                     })
-                    .unwrap();
-                writeln!(writer, "response: {:?}", response).unwrap();
+                    .unwrap()
+                    .into();
+                output.write(response).unwrap();
             }
         }
     };

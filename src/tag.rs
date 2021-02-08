@@ -1,6 +1,9 @@
 use chrono::{DateTime, Utc};
 use pocket::*;
 use structopt::StructOpt;
+use std::io::Write;
+use crate::output::Output;
+use crate::models::IndividualSendResponse;
 
 #[derive(Debug, StructOpt)]
 pub enum Tag {
@@ -19,7 +22,7 @@ pub enum Tag {
     },
 }
 
-pub fn handle(pocket: &impl PocketSend, opts: &Tag, mut writer: impl std::io::Write) {
+pub fn handle<W: Write>(pocket: &impl PocketSend, opts: &Tag, output: &mut Output<W>) {
     let action = match opts {
         Tag::Rename {
             old_tag,
@@ -36,12 +39,13 @@ pub fn handle(pocket: &impl PocketSend, opts: &Tag, mut writer: impl std::io::Wr
         },
     };
 
-    let response = pocket
+    let response: IndividualSendResponse = pocket
         .send(&PocketSendRequest {
             actions: &[&action],
         })
-        .unwrap();
-    writeln!(writer, "response: {:?}", response).unwrap();
+        .unwrap()
+        .into();
+    output.write(response).unwrap();
 }
 
 pub trait PocketSend {

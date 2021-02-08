@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+use crate::output::Output;
+use std::io::Write;
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigOpts {
@@ -39,7 +41,7 @@ pub fn store(cfg: Config) {
 const CFG_KEY_CONSUMER_KEY: &str = "consumer_key";
 const CFG_KEY_ACCESS_TOKEN: &str = "access_token";
 
-pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
+pub fn handle<W: Write>(opts: &ConfigOpts, output: &mut Output<W>) {
     let mut cfg = load();
 
     match opts {
@@ -50,7 +52,7 @@ pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
                 _ => panic!(format!("Invalid key: `{}`", key)),
             }
             .unwrap_or_default();
-            writeln!(writer, "{}", value).unwrap();
+            output.write(value).unwrap();
         }
         ConfigOpts::Set { key, value } => {
             match key.as_str() {
@@ -59,10 +61,10 @@ pub fn handle(opts: &ConfigOpts, mut writer: impl std::io::Write) {
                 _ => panic!(format!("Invalid key: `{}`", key)),
             };
             store(cfg);
-            writeln!(writer, "Success").unwrap();
+            output.write("Success").unwrap();
         }
         ConfigOpts::View => {
-            writeln!(writer, "{:?}", cfg).unwrap();
+            output.write(cfg).unwrap();
         }
     }
 }

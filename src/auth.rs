@@ -3,6 +3,8 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};
 use structopt::StructOpt;
 use url::Url;
+use std::io::Write;
+use crate::output::Output;
 
 #[derive(Debug, StructOpt)]
 pub enum Auth {
@@ -14,29 +16,27 @@ pub enum Auth {
     },
 }
 
-pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
+pub fn handle<W: Write>(cmd: &Auth, consumer_key: &str, output: &mut Output<W>) {
     match cmd {
         Auth::Login { save } => {
             let server = TcpAuthServer::new();
             let pocket = PocketAuthentication::new(&consumer_key, server.addr());
-            login(pocket, *save, server, writer)
+            login(pocket, *save, server, output)
         }
     }
 }
 
-fn login(
+fn login<W: Write>(
     pocket: impl PocketAuth,
     save: bool,
     server: impl AuthServer,
-    mut writer: impl std::io::Write,
+    output: &mut Output<W>,
 ) {
     let code = pocket.request(None).unwrap();
-    writeln!(
-        writer,
+    output.write(format!(
         "Follow auth URL to provide access: {}",
         pocket.authorize_url(&code)
-    )
-    .unwrap();
+    )).unwrap();
 
     server.wait_for_response();
 
@@ -46,10 +46,10 @@ fn login(
         let mut cfg = crate::config::load();
         cfg.access_token = Some(user.access_token);
         crate::config::store(cfg);
-        writeln!(writer, "Success!").unwrap();
+        output.write("Success!").unwrap();
     } else {
-        writeln!(writer, "username: {}", user.username).unwrap();
-        writeln!(writer, "access token: {:?}", user.access_token).unwrap();
+        output.write(format!("username: {}", user.username)).unwrap();
+        output.write(format!("access token: {:?}", user.access_token)).unwrap();
     }
 }
 

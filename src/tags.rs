@@ -8,9 +8,11 @@ macro_rules! tags {
             use super::{PocketSend, TagsOpts};
             use pocket::{PocketSendAction, PocketSendRequest};
             use std::io::Write;
+            use crate::output::Output;
+            use crate::models::IndividualSendResponse;
 
-            pub fn handle(pocket: &impl PocketSend, opts: &TagsOpts, mut writer: impl Write) {
-                let response = pocket
+            pub fn handle<W: Write>(pocket: &impl PocketSend, opts: &TagsOpts, output: &mut Output<W>) {
+                let response: IndividualSendResponse = pocket
                     .send(&PocketSendRequest {
                         actions: &[&PocketSendAction::$action {
                             item_id: opts.item_id,
@@ -22,8 +24,9 @@ macro_rules! tags {
                             time: opts.time.map(|t| t.timestamp() as u64),
                         }],
                     })
-                    .unwrap();
-                writeln!(writer, "response: {:?}", response).unwrap();
+                    .unwrap()
+                    .into();
+                    output.write(response).unwrap();
             }
         }
     };
