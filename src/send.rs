@@ -6,12 +6,16 @@ macro_rules! send_item {
     ($command:ident, $action:ident) => {
         pub mod $command {
             use super::{PocketSend, SendItemOpts};
+            use crate::models::IndividualSendResponse;
+            use crate::output::Output;
             use pocket::{PocketSendAction, PocketSendRequest};
             use std::io::Write;
-            use crate::output::Output;
-            use crate::models::IndividualSendResponse;
 
-            pub fn handle<W: Write>(pocket: &impl PocketSend, opts: &SendItemOpts, output: &mut Output<W>) {
+            pub fn handle<W: Write>(
+                pocket: &impl PocketSend,
+                opts: &SendItemOpts,
+                output: &mut Output<W>,
+            ) {
                 let response: IndividualSendResponse = pocket
                     .send(&PocketSendRequest {
                         actions: &[&PocketSendAction::$action {

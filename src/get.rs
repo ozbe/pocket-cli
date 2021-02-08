@@ -172,8 +172,8 @@ impl PocketGet for Pocket {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io;
     use crate::output::OutputFormat;
+    use std::io;
     use std::io::stdout;
 
     struct PocketGetMock<'a, F, G>

@@ -1,9 +1,9 @@
+use crate::models::IndividualSendResponse;
+use crate::output::Output;
 use chrono::{DateTime, Utc};
 use pocket::*;
-use structopt::StructOpt;
 use std::io::Write;
-use crate::output::Output;
-use crate::models::IndividualSendResponse;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub enum Tag {

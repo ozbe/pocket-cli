@@ -96,9 +96,9 @@ impl PocketAdd for Pocket {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::OutputFormat;
     use hyper::Url;
     use std::io;
-    use crate::output::OutputFormat;
 
     struct WriteMock<W, F>
     where
@@ -201,7 +201,11 @@ mod tests {
 
         handle(&pocket, &opts, &mut output);
 
-        assert_eq!(serde_json::to_string(&expected_item).unwrap(), String::from_utf8_lossy(&output.into_vec()));    }
+        assert_eq!(
+            serde_json::to_string(&expected_item).unwrap(),
+            String::from_utf8_lossy(&output.into_vec())
+        );
+    }
 
     #[test]
     #[should_panic]

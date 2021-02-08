@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use structopt::StructOpt;
 use crate::output::Output;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub enum ConfigOpts {

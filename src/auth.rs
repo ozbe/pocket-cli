@@ -1,10 +1,10 @@
+use crate::output::Output;
 use pocket::*;
 use std::io::prelude::*;
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use structopt::StructOpt;
 use url::Url;
-use std::io::Write;
-use crate::output::Output;
 
 #[derive(Debug, StructOpt)]
 pub enum Auth {
@@ -33,10 +33,12 @@ fn login<W: Write>(
     output: &mut Output<W>,
 ) {
     let code = pocket.request(None).unwrap();
-    output.write(format!(
-        "Follow auth URL to provide access: {}",
-        pocket.authorize_url(&code)
-    )).unwrap();
+    output
+        .write(format!(
+            "Follow auth URL to provide access: {}",
+            pocket.authorize_url(&code)
+        ))
+        .unwrap();
 
     server.wait_for_response();
 
@@ -48,8 +50,12 @@ fn login<W: Write>(
         crate::config::store(cfg);
         output.write("Success!").unwrap();
     } else {
-        output.write(format!("username: {}", user.username)).unwrap();
-        output.write(format!("access token: {:?}", user.access_token)).unwrap();
+        output
+            .write(format!("username: {}", user.username))
+            .unwrap();
+        output
+            .write(format!("access token: {:?}", user.access_token))
+            .unwrap();
     }
 }
 
