@@ -73,7 +73,8 @@ where
             OutputFormat::Json => self.json(&value),
             OutputFormat::Yaml => self.yaml(&value),
             OutputFormat::Toml => self.toml(&value),
-        }
+        }?;
+        self.writer.flush().map_err(|_| OutputError {})
     }
 
     fn json<T: ?Sized + Serialize>(&mut self, value: &T) -> Result<(), OutputError> {
