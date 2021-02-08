@@ -1,6 +1,7 @@
 extern crate pocket;
 extern crate structopt;
 
+use crate::output::Output;
 use pocket::*;
 use structopt::StructOpt;
 
@@ -8,6 +9,8 @@ mod add;
 mod auth;
 mod config;
 mod get;
+mod models;
+mod output;
 mod send;
 mod tag;
 mod tags;
@@ -24,6 +27,8 @@ struct Opts {
     /// Subcommand
     #[structopt(subcommand)]
     command: Commands,
+    #[structopt(default_value, long, short)]
+    output: output::OutputFormat,
 }
 
 #[derive(Debug, StructOpt)]
@@ -97,6 +102,7 @@ fn main() {
         consumer_key: opt_consumer_key,
         access_token: opt_access_token,
         command,
+        output,
     } = Opts::from_args();
     let config::Config {
         consumer_key: cfg_consumer_key,
@@ -114,7 +120,8 @@ fn main() {
 
     match command {
         Commands::Add { opts: ref add_opts } => {
-            add::handle(&pocket(&consumer_key()), add_opts, &mut writer)
+            let mut output = Output::new(output, writer);
+            add::handle(&pocket(&consumer_key()), add_opts, &mut output)
         }
         Commands::Archive { ref opts } => {
             send::archive::handle(&pocket(&consumer_key()), opts, &mut writer)
@@ -128,7 +135,8 @@ fn main() {
             send::favorite::handle(&pocket(&consumer_key()), opts, &mut writer)
         }
         Commands::Get { opts: ref get_opts } => {
-            get::handle(&pocket(&consumer_key()), get_opts, &mut writer)
+            let mut output = Output::new(output, writer);
+            get::handle(&pocket(&consumer_key()), get_opts, &mut output)
         }
         Commands::Readd { ref opts } => {
             send::readd::handle(&pocket(&consumer_key()), opts, &mut writer)
