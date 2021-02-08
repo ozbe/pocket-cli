@@ -1,5 +1,9 @@
+use crate::output::Output;
 use pocket::*;
+use serde::Serialize;
+use std::error::Error;
 use std::io::prelude::*;
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use structopt::StructOpt;
 use url::Url;
@@ -14,42 +18,57 @@ pub enum Auth {
     },
 }
 
-pub fn handle(cmd: &Auth, consumer_key: &str, writer: impl std::io::Write) {
+pub fn handle<W: Write>(cmd: &Auth, consumer_key: &str, output: &mut Output<W>) {
     match cmd {
         Auth::Login { save } => {
             let server = TcpAuthServer::new();
             let pocket = PocketAuthentication::new(&consumer_key, server.addr());
-            login(pocket, *save, server, writer)
+            login(pocket, *save, server, &open_browser, output)
         }
     }
 }
 
-fn login(
+fn open_browser(url: &Url) -> Result<(), Box<dyn Error>> {
+    webbrowser::open(url.as_str())
+        .map(|_| ())
+        .map_err(|e| e.into())
+}
+
+fn login<W: Write>(
     pocket: impl PocketAuth,
     save: bool,
     server: impl AuthServer,
-    mut writer: impl std::io::Write,
+    open_browser: &dyn Fn(&Url) -> Result<(), Box<dyn Error>>,
+    output: &mut Output<W>,
 ) {
     let code = pocket.request(None).unwrap();
-    writeln!(
-        writer,
-        "Follow auth URL to provide access: {}",
-        pocket.authorize_url(&code)
-    )
-    .unwrap();
-
+    let authorize_url = pocket.authorize_url(&code);
+    open_browser(&authorize_url).unwrap();
     server.wait_for_response();
 
-    let user = pocket.authorize(&code, None).unwrap();
+    let user: User = pocket.authorize(&code, None).unwrap().into();
 
     if save {
         let mut cfg = crate::config::load();
-        cfg.access_token = Some(user.access_token);
+        cfg.access_token = Some(user.access_token.clone());
         crate::config::store(cfg);
-        writeln!(writer, "Success!").unwrap();
-    } else {
-        writeln!(writer, "username: {}", user.username).unwrap();
-        writeln!(writer, "access token: {:?}", user.access_token).unwrap();
+    }
+
+    output.write(user).unwrap();
+}
+
+#[derive(Serialize)]
+struct User {
+    access_token: String,
+    username: String,
+}
+
+impl From<PocketUser> for User {
+    fn from(u: PocketUser) -> Self {
+        User {
+            access_token: u.access_token,
+            username: u.username,
+        }
     }
 }
 
@@ -136,6 +155,7 @@ const AUTH_SUCCESS_RESPONSE_BODY: &str = r#"
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::OutputFormat;
     use pocket::{PocketResult, PocketUser};
     use std::io;
 
@@ -159,22 +179,28 @@ mod tests {
         let server = AuthServerMock {
             wait_for_response_mock: || {},
         };
-        let mut result = Vec::new();
+        let writer = Vec::new();
+        let mut output = Output::new(OutputFormat::Json, writer);
+        let expected_user = User {
+            username: username.to_string(),
+            access_token: access_token.to_string(),
+        };
 
-        login(pocket, false, server, &mut result);
+        login(pocket, false, server, &noop_browser, &mut output);
 
         assert_eq!(
-            format!(
-                "Follow auth URL to provide access: {}\nusername: {}\naccess token: {:?}\n",
-                url, username, access_token
-            ),
-            to_string(&result)
+            serde_json::to_string(&expected_user).unwrap(),
+            String::from_utf8_lossy(&output.into_vec())
         )
     }
 
-    fn to_string(bytes: &[u8]) -> String {
-        std::str::from_utf8(&bytes).unwrap().to_string()
+    fn noop_browser(_url: &Url) -> Result<(), Box<dyn Error>> {
+        Ok(())
     }
+
+    // fn to_string(bytes: &[u8]) -> String {
+    //     std::str::from_utf8(&bytes).unwrap().to_string()
+    // }
 
     struct PocketAuthMock<R, U, A>
     where

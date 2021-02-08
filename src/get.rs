@@ -1,8 +1,11 @@
 use chrono::{DateTime, Utc};
 use pocket::*;
 use std::io;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use structopt::StructOpt;
+
+use crate::models::{Image, Item};
+use crate::output::Output;
 
 #[derive(Debug, StructOpt)]
 pub struct GetOpts {
@@ -32,8 +35,8 @@ pub struct GetOpts {
     offset: Option<usize>,
 }
 
-pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io::Write) {
-    let items = {
+pub fn handle<W: Write>(pocket: &impl PocketGet, opts: &GetOpts, output: &mut Output<W>) {
+    let items: Vec<Item> = {
         let mut f = pocket.filter();
 
         if let Some(search) = &opts.search {
@@ -92,10 +95,63 @@ pub fn handle(pocket: &impl PocketGet, opts: &GetOpts, mut writer: impl std::io:
             f.count(count);
         }
 
-        pocket.get(&f)
+        pocket
+            .get(&f)
+            .map(|v| v.into_iter().map(|i| i.into()).collect())
     }
     .unwrap();
-    writeln!(writer, "items: {:?}", items).unwrap();
+    output.write(&items).unwrap();
+}
+
+impl From<PocketItem> for Item {
+    fn from(p: PocketItem) -> Self {
+        Item {
+            item_id: p.item_id,
+            given_url: p.given_url,
+            given_title: Some(p.given_title),
+            word_count: p.word_count,
+            excerpt: p.excerpt,
+            time_added: Some(p.time_added),
+            time_read: p.time_read,
+            time_updated: Some(p.time_updated),
+            time_favorited: p.time_favorited,
+            favorite: Some(p.favorite),
+            is_index: p.is_index,
+            is_article: p.is_article,
+            has_image: p.has_image.into(),
+            has_video: p.has_video.into(),
+            resolved_id: p.resolved_id,
+            resolved_title: Some(p.resolved_title),
+            resolved_url: p.resolved_url,
+            sort_id: Some(p.sort_id),
+            status: Some(p.status.into()),
+            tags: p.tags.map(|v| v.into_iter().map(|t| t.into()).collect()),
+            images: p.images.map(|v| v.into_iter().map(|i| i.into()).collect()),
+            videos: p.videos.map(|v| v.into_iter().map(|v| v.into()).collect()),
+            authors: p.authors.map(|v| v.into_iter().map(|a| a.into()).collect()),
+            lang: Some(p.lang),
+            time_to_read: p.time_to_read,
+            domain_metadata: p.domain_metadata.map(|d| d.into()),
+            listen_duration_estimate: p.listen_duration_estimate,
+            image: p.image.map(|i| i.into()),
+            amp_url: p.amp_url,
+            top_image_url: p.top_image_url,
+        }
+    }
+}
+
+impl From<PocketImage> for Image {
+    fn from(i: PocketImage) -> Self {
+        Image {
+            item_id: i.item_id,
+            image_id: Some(i.image_id),
+            src: i.src,
+            width: i.width,
+            height: i.height,
+            credit: Some(i.credit),
+            caption: Some(i.caption),
+        }
+    }
 }
 
 pub trait PocketGet {
@@ -116,7 +172,9 @@ impl PocketGet for Pocket {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::OutputFormat;
     use std::io;
+    use std::io::stdout;
 
     struct PocketGetMock<'a, F, G>
     where
@@ -166,7 +224,6 @@ mod tests {
 
     #[test]
     fn get_writes_items() {
-        let items: Vec<PocketItem> = vec![];
         let pocket = PocketGetMock {
             filter_mock: || PocketGetRequest::new(),
             get_mock: |_| Ok(vec![]),
@@ -185,11 +242,12 @@ mod tests {
             count: None,
             offset: None,
         };
-        let mut result = Vec::new();
+        let writer = Vec::new();
+        let mut output = Output::new(OutputFormat::Json, writer);
 
-        handle(&pocket, &opts, &mut result);
+        handle(&pocket, &opts, &mut output);
 
-        assert_eq!(format!("items: {:?}\n", &items).into_bytes(), result);
+        assert_eq!("[]", String::from_utf8_lossy(&output.into_vec()));
     }
 
     #[test]
@@ -213,9 +271,9 @@ mod tests {
             count: None,
             offset: None,
         };
-        let mut writer = Vec::new();
+        let mut output = Output::new(OutputFormat::Json, stdout());
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 
     #[test]
@@ -239,12 +297,13 @@ mod tests {
             count: None,
             offset: None,
         };
-        let mut writer = WriteMock {
+        let writer = WriteMock {
             flush_mock: || Ok(()),
             write_mock: |_| Err(io::Error::new(io::ErrorKind::Other, "oh no")),
         };
+        let mut output = Output::new(OutputFormat::Json, writer);
 
-        handle(&pocket, &opts, &mut writer);
+        handle(&pocket, &opts, &mut output);
     }
 }
 
