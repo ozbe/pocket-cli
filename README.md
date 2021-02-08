@@ -9,19 +9,17 @@ A utility for interacting with the Pocket API.
 ### macOS (OSX)
 
 ```bash
-$ curl -L https://github.com/ozbe/pocket-cli/releases/download/v0.1.0/pocket-macos -o pocket
+$ curl -L https://github.com/ozbe/pocket-cli/releases/download/v1.0.0/pocket-macos -o pocket
 $ chmod +x pocket
-$ cp pocket /usr/local/bin
-$ rm pocket
+$ mv pocket /usr/local/bin
 ```
 
 ### Ubuntu (Linux)
 
 ```bash
-$ wget https://github.com/ozbe/pocket-cli/releases/download/v0.1.0/pocket-linux -o pocket
+$ wget https://github.com/ozbe/pocket-cli/releases/download/v1.0.0/pocket-linux -o pocket
 $ chmod +x pocket
-$ cp pocket /usr/local/bin
-$ rm pocket
+$ mv pocket /usr/local/bin
 ```
 
 ### Windows
@@ -46,7 +44,7 @@ Run pocket with `pocket -h` or `pocket --help` to view the latest available flag
 commands.
 
 ```text
-pocket 0.1.0
+pocket 1.0.0
 Interact with the Pocket API
 
 USAGE:
