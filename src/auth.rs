@@ -1,12 +1,12 @@
 use crate::output::Output;
 use pocket::*;
+use serde::Serialize;
+use std::error::Error;
 use std::io::prelude::*;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use structopt::StructOpt;
 use url::Url;
-use serde::Serialize;
-use std::error::Error;
 
 #[derive(Debug, StructOpt)]
 pub enum Auth {
@@ -53,7 +53,7 @@ fn login<W: Write>(
         cfg.access_token = Some(user.access_token.clone());
         crate::config::store(cfg);
     }
-    
+
     output.write(user).unwrap();
 }
 
@@ -155,9 +155,9 @@ const AUTH_SUCCESS_RESPONSE_BODY: &str = r#"
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::OutputFormat;
     use pocket::{PocketResult, PocketUser};
     use std::io;
-    use crate::output::OutputFormat;
 
     #[test]
     fn login_writes_user() {
